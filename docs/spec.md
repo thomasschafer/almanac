@@ -89,4 +89,5 @@ The rules need checking after each event that can change them: the UK Budget (au
 Scottish Budget (December or January), HMRC's payroll figures (February or March) and the
 student loan announcements (August, and interest from 1 September). Those dates are listed next
 to the rules. The tool raises a notice when one has passed since the rules were last checked,
-when next year's rules are missing from January, and if six months pass without a check.
+when next year's rules are missing from January, and if six months pass without a check. How to
+do a review is in [tax-rules.md](tax-rules.md).

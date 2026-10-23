@@ -37,11 +37,16 @@ export const takeHomeInputs = z.strictObject({
     /** The month of the tax year it's paid in: 1 is April, 12 is March. */
     month: z.number().int().min(1).max(12),
   }),
+  /**
+   * Employee contributions are the gross amount going into the pension, whatever the method: with
+   * relief at source, the basic-rate share of it is added by the provider rather than taken from
+   * pay.
+   */
   pension: z.strictObject({
     method: z.enum(pensionMethods),
     /** Taken from base salary, evenly across the year. */
     fromSalary: contribution,
-    /** Taken from the bonus, in the month it's paid. */
+    /** Taken from the bonus, in the month it's paid. A fixed amount is taken from the bonus whole. */
     fromBonus: contribution,
     /** Paid by the employer, as a share of base salary. */
     employer: contribution,
