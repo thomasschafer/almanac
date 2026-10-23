@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const run = promisify(execFile);
 
-/** The tailscale CLI: on the PATH, or inside the macOS app, which doesn't put it there. */
+/** The tailscale CLI: inside the macOS app if it's installed, otherwise from the PATH. */
 function tailscaleBin(): string {
   const app = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
   return existsSync(app) ? app : "tailscale";
@@ -31,6 +31,10 @@ export function parseOwnerLogin(statusJson: string): string {
  * in the Tailscale-User-Login header, so requests from anyone else can be refused.
  */
 export async function ownerLogin(): Promise<string> {
-  const { stdout } = await run(tailscaleBin(), ["status", "--json"]);
+  // The macOS app's binary only acts as the CLI when it looks like it's run from a terminal;
+  // under launchd it tries to start the GUI instead, unless told otherwise.
+  const { stdout } = await run(tailscaleBin(), ["status", "--json"], {
+    env: { ...process.env, TAILSCALE_BE_CLI: "1" },
+  });
   return parseOwnerLogin(stdout);
 }
