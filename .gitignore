@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+CLAUDE.local.md
+
+# Personal data must never be committed. The app keeps its data outside the repo (see
+# docs/operations.md), but guard against stray copies too.
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.csv
+data/
+.dev-data/
