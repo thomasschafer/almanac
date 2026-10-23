@@ -89,8 +89,6 @@ export interface PayBreakdown {
   /** Pay that income tax is worked out on, before the allowance. */
   readonly taxablePay: Pence;
   readonly incomeTax: Pence;
-  /** Tax due but not taken because of the 50% overriding limit on K codes. */
-  readonly incomeTaxNotDeducted: Pence;
   readonly nationalInsurance: Pence;
   readonly employerNationalInsurance: Pence;
   /** One entry per plan, in the order of the inputs. */
@@ -190,6 +188,11 @@ export interface TakeHomeCalculation {
   /** Net pay can drift between non-bonus months, such as after a bonus on a cumulative code. */
   readonly nonBonusNetPayRange: { readonly min: Pence; readonly max: Pence };
   readonly annual: PayBreakdown;
+  /**
+   * Tax due for the year that payroll couldn't take because of the overriding limit (K codes),
+   * which HMRC collects another way.
+   */
+  readonly incomeTaxNotDeducted: Pence;
   /** Relief at source only: relief beyond the provider's top-up, claimed through Self Assessment. */
   readonly reliefAtSourceClaimable: Pence | null;
   readonly adjustedNetIncome: Pence;
