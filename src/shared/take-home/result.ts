@@ -240,7 +240,7 @@ export type LoanOutcome =
       readonly missing: "first-repayment-year";
       readonly repaidBy: string | null;
     }
-  /** Still outstanding at the end of the horizon (only possible without a write-off date). */
+  /** Still outstanding at the end of the horizon, with the write-off date beyond it. */
   | { readonly kind: "outstanding"; readonly horizonEnd: string; readonly balance: Pence };
 
 export interface LoanProjection {
@@ -265,4 +265,10 @@ export type StudentLoanProjection =
       readonly assumptions: readonly string[];
     }
   /** The start date falls in a tax year with no rules. */
-  | { readonly status: "no-rules"; readonly taxYear: string };
+  | { readonly status: "no-rules"; readonly taxYear: string }
+  /** The pay can't be projected for a year, such as a fixed pension amount above a falling salary. */
+  | {
+      readonly status: "invalid";
+      readonly taxYear: string;
+      readonly issues: readonly InputIssue[];
+    };

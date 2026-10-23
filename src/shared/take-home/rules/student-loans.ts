@@ -185,7 +185,8 @@ export const plan2UpperInterestThreshold: {
   uprating: provisional(
     { kind: "frozen-then-rpi", frozenThroughStartYear: 2029, roundUpTo: roundUpToFivePounds },
     "https://ifs.org.uk/articles/how-do-plan-2-student-loans-work-and-how-have-they-changed-over-time",
-    "Reported as frozen alongside the repayment threshold; not stated on GOV.UK.",
+    "The upper threshold (£52,885 for 2026/27) is reported as frozen to 2029/30 alongside the " +
+      "repayment threshold, then assumed to rise with RPI; GOV.UK doesn't say.",
   ),
 };
 
