@@ -2,7 +2,13 @@ import { asPence, type Pence } from "../money.ts";
 import { itemAt, sum } from "./arithmetic.ts";
 import type { StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
 import { payYear, type MonthPay } from "./pay.ts";
-import type { LoanOutcome, LoanPoint, LoanProjection, StudentLoanProjection } from "./result.ts";
+import type {
+  LoanMonth,
+  LoanOutcome,
+  LoanPoint,
+  LoanProjection,
+  StudentLoanProjection,
+} from "./result.ts";
 import {
   findTaxYearRules,
   startYearOfTaxYear,
@@ -292,6 +298,7 @@ interface LoanState {
   end:
     { kind: "repaid"; date: string } | { kind: "written-off"; date: string; balance: Pence } | null;
   readonly points: LoanPoint[];
+  readonly months: LoanMonth[];
   repaidSincePoint: number;
   interestSincePoint: number;
   totalRepaid: number;
@@ -374,6 +381,7 @@ export function projectStudentLoans(
       repaying: true,
       end: null,
       points: [],
+      months: [],
       repaidSincePoint: 0,
       interestSincePoint: 0,
       totalRepaid: 0,
@@ -461,6 +469,15 @@ export function projectStudentLoans(
         state.repaidSincePoint += repaid;
         state.totalInterest += interest;
         state.totalRepaid += repaid;
+        state.months.push({
+          date: monthEnd(startYear, month),
+          taxYear: taxYearId(startYear),
+          pay: itemAt(pay.months, month - 1).niablePay,
+          interestRatePercent: rate,
+          interest: asPence(interest),
+          repaid: asPence(repaid),
+          balance: state.balance,
+        });
         if (state.balance === 0) {
           state.repaying = false;
           state.end = { kind: "repaid", date: monthEnd(startYear, month) };
@@ -480,6 +497,7 @@ export function projectStudentLoans(
     name: studentLoanPlanRules[state.plan].name,
     outcome: outcomeOf(state, horizonEnd),
     points: state.points,
+    months: state.months,
     totalRepaid: asPence(state.totalRepaid),
     totalInterest: asPence(state.totalInterest),
   }));

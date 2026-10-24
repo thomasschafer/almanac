@@ -5,7 +5,8 @@
 import { chromium, devices } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { exampleInputs } from "../tests/e2e/fixtures.ts";
+import type { TakeHomeState } from "../src/shared/take-home/state.ts";
+import { exampleInputs, exampleWhatIf } from "../tests/e2e/fixtures.ts";
 
 const [baseUrl, outDir] = process.argv.slice(2);
 if (baseUrl === undefined || outDir === undefined) {
@@ -13,20 +14,26 @@ if (baseUrl === undefined || outDir === undefined) {
 }
 mkdirSync(outDir, { recursive: true });
 
-const res = await fetch(`${baseUrl}/api/tools/take-home/state`, {
-  method: "PUT",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ state: exampleInputs }),
-});
-if (!res.ok) throw new Error(`couldn't set up example figures: ${String(res.status)}`);
+async function setState(state: TakeHomeState): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/tools/take-home/state`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state }),
+  });
+  if (!res.ok) throw new Error(`couldn't set up example figures: ${String(res.status)}`);
+}
 
 const viewports = {
   phone: devices["iPhone 15"],
   laptop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 },
 };
+const plain: TakeHomeState = { inputs: exampleInputs, whatIf: null };
+const comparing: TakeHomeState = { inputs: exampleInputs, whatIf: exampleWhatIf };
 const pages = [
-  { name: "index", path: "/" },
-  { name: "take-home", path: "/take-home" },
+  { name: "index", path: "/", state: plain },
+  { name: "take-home", path: "/take-home", state: plain },
+  { name: "take-home-what-if", path: "/take-home", state: comparing },
+  { name: "student-loans", path: "/take-home/student-loans", state: plain },
 ];
 
 const browser = await chromium.launch();
@@ -37,6 +44,7 @@ for (const [device, options] of Object.entries(viewports)) {
       localStorage.clear();
     });
     for (const page of pages) {
+      await setState(page.state);
       const tab = await context.newPage();
       await tab.goto(`${baseUrl}${page.path}`);
       await tab.waitForLoadState("networkidle");

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
-import { type ToolId, type ToolState, toolStates } from "../shared/tools.ts";
+import { type PresetState, type ToolId, type ToolState, toolSchemas } from "../shared/tools.ts";
 
 export interface SavedState<T extends ToolId> {
   state: ToolState<T>;
@@ -11,7 +11,7 @@ export interface SavedState<T extends ToolId> {
 export interface Preset<T extends ToolId> {
   id: string;
   name: string;
-  state: ToolState<T>;
+  state: PresetState<T>;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,8 +32,14 @@ const presetRow = z.object({
  * Stored state is validated on the way out as well as in, so a row that no longer matches its
  * schema fails loudly rather than reaching the client half-understood.
  */
+// TypeScript can't relate a schema looked up by a generic tool id to that tool's type, so these
+// assert what the lookup guarantees.
 function parseState<T extends ToolId>(tool: T, json: string): ToolState<T> {
-  return toolStates[tool].parse(JSON.parse(json));
+  return toolSchemas[tool].state.parse(JSON.parse(json)) as ToolState<T>;
+}
+
+function parsePreset<T extends ToolId>(tool: T, json: string): PresetState<T> {
+  return toolSchemas[tool].preset.parse(JSON.parse(json)) as PresetState<T>;
 }
 
 function toPreset<T extends ToolId>(tool: T, row: unknown): Preset<T> {
@@ -41,7 +47,7 @@ function toPreset<T extends ToolId>(tool: T, row: unknown): Preset<T> {
   return {
     id: r.id,
     name: r.name,
-    state: parseState(tool, r.state),
+    state: parsePreset(tool, r.state),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -78,7 +84,7 @@ export function createStore(db: DatabaseSync, now: () => Date) {
         .map((row) => toPreset(tool, row));
     },
 
-    createPreset<T extends ToolId>(tool: T, name: string, state: ToolState<T>): Preset<T> {
+    createPreset<T extends ToolId>(tool: T, name: string, state: PresetState<T>): Preset<T> {
       const id = randomUUID();
       const at = now().toISOString();
       try {
@@ -96,7 +102,7 @@ export function createStore(db: DatabaseSync, now: () => Date) {
       tool: T,
       id: string,
       name: string,
-      state: ToolState<T>,
+      state: PresetState<T>,
     ): Preset<T> {
       const at = now().toISOString();
       let changes: number | bigint;

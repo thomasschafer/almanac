@@ -25,7 +25,7 @@ export const tools: readonly Tool[] = [
     icon: Banknote,
     color: "var(--take-home)",
     path: "/take-home",
-    Page: lazy(() => import("./take-home/TakeHomePage.tsx")),
+    Page: lazy(() => import("./take-home/TakeHomeTool.tsx")),
     notices: (now) => takeHomeNotices(now),
   },
 ];

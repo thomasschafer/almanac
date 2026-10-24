@@ -26,7 +26,7 @@ export function IndexPage() {
     <main className="page index-page">
       <PageHeader
         title="Almanac"
-        back={false}
+        back={null}
         subtitle={<span className="num">{today.format(new Date())}</span>}
       />
       <section aria-labelledby="tools-heading">

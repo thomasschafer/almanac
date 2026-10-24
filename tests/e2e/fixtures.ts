@@ -1,5 +1,6 @@
 import { asPence } from "../../src/shared/money.ts";
 import type { TakeHomeInputs } from "../../src/shared/take-home/inputs.ts";
+import type { TakeHomeState } from "../../src/shared/take-home/state.ts";
 
 /** Made-up figures that exercise most of the take-home page. Never use real ones. */
 export const exampleInputs: TakeHomeInputs = {
@@ -18,3 +19,13 @@ export const exampleInputs: TakeHomeInputs = {
   taxCode: null,
   projection: { salaryGrowthPercent: 3, rpiPercent: 3 },
 };
+
+/** A what-if scenario on top of the example: a pay rise, with more into the pension. */
+export const exampleWhatIf = {
+  label: "Pay rise",
+  inputs: {
+    ...exampleInputs,
+    salary: asPence(10_500_000),
+    pension: { ...exampleInputs.pension, fromSalary: { kind: "percent", percent: 10 } },
+  },
+} as const satisfies TakeHomeState["whatIf"];

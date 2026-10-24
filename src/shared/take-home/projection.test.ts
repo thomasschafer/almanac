@@ -290,3 +290,30 @@ describe("interest", () => {
     expect(interestRate("postgraduate", "2027-09-06", 4, income)).toBeCloseTo(6);
   });
 });
+
+describe("monthly detail", () => {
+  it("records every month, consistent with the totals and the balance", () => {
+    const inputs = testInputs({
+      salary: 60_000,
+      loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear: 2020 }],
+      salaryGrowthPercent: 2,
+    });
+    const projection = projectStudentLoans(
+      inputs,
+      taxYearRegistry,
+      new Date("2026-10-23T12:00:00Z"),
+    );
+    if (projection.status !== "ok") throw new Error(projection.status);
+    const [loan] = projection.loans;
+    if (loan === undefined) throw new Error("no loan");
+    expect(loan.months.length).toBeGreaterThan(12);
+    expect(loan.months.reduce((total, m) => total + m.repaid, 0)).toBe(loan.totalRepaid);
+    expect(loan.months.reduce((total, m) => total + m.interest, 0)).toBe(loan.totalInterest);
+    let balance = 3_000_000;
+    for (const month of loan.months) {
+      balance = balance + month.interest - month.repaid;
+      expect(month.balance).toBe(balance);
+    }
+    expect(loan.months.at(-1)?.balance).toBe(0);
+  });
+});

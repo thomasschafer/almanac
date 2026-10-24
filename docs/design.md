@@ -12,8 +12,8 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
   for notices and callouts, and always come with an icon and a title.
 - Quiet surfaces. Panels are white (or near-black) cards with a hairline border on a grey page.
   Labels are small and grey; values are large and black.
-- Progressive detail. Show the inputs most people need; tuck the rest behind "more options",
-  with a one-line summary of what's set there.
+- Progressive detail. Show the inputs most people need; put the rest in a "more options" sheet,
+  with a one-line summary of what's set there, so the results stay in view.
 - Nothing is lost. Edits save on their own, and a notice appears if they can't be.
 - Motion is short (under 300ms), eases out, and is disabled for reduced-motion users.
 

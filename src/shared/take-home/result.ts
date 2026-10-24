@@ -226,6 +226,21 @@ export interface LoanPoint {
   readonly interest: Pence;
 }
 
+/** One month of a loan's projection. */
+export interface LoanMonth {
+  /** YYYY-MM-DD: the end of the pay month (the 5th of the next calendar month). */
+  readonly date: string;
+  readonly taxYear: string;
+  /** The month's pay that repayments are worked out on. */
+  readonly pay: Pence;
+  /** The yearly rate interest was added at this month. */
+  readonly interestRatePercent: number;
+  readonly interest: Pence;
+  readonly repaid: Pence;
+  /** After this month's interest and repayment. */
+  readonly balance: Pence;
+}
+
 export type LoanOutcome =
   | { readonly kind: "repaid"; readonly date: string }
   | { readonly kind: "written-off"; readonly date: string; readonly balanceWrittenOff: Pence }
@@ -249,6 +264,8 @@ export interface LoanProjection {
   readonly outcome: LoanOutcome;
   /** Empty when the outcome is unknown for lack of a balance. */
   readonly points: readonly LoanPoint[];
+  /** Every projected month, also empty without a balance. */
+  readonly months: readonly LoanMonth[];
   readonly totalRepaid: Pence;
   readonly totalInterest: Pence;
 }

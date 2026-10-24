@@ -33,7 +33,7 @@ createRoot(root).render(
           <Routes>
             <Route path="/" element={<IndexPage />} />
             {tools.map((tool) => (
-              <Route key={tool.id} path={tool.path} element={<tool.Page />} />
+              <Route key={tool.id} path={`${tool.path}/*`} element={<tool.Page />} />
             ))}
             <Route path="*" element={<NotFound />} />
           </Routes>

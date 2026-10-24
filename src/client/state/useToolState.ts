@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { type ToolId, type ToolState, toolStates } from "../../shared/tools.ts";
+import { type ToolId, type ToolState, toolSchemas } from "../../shared/tools.ts";
 import { getState, putState } from "../api.ts";
 import { readLocal, writeLocal } from "../local-store.ts";
 
@@ -17,8 +17,8 @@ export type SyncStatus =
   /** Edits are kept on this device and will be saved when the server can be reached. */
   | { kind: "unsaved"; message: string };
 
-function cacheSchema<T extends ToolId>(tool: T) {
-  return z.object({ state: toolStates[tool], dirty: z.boolean() });
+function cacheSchema(tool: ToolId) {
+  return z.object({ state: toolSchemas[tool].state, dirty: z.boolean() });
 }
 
 function cacheKey(tool: ToolId): string {

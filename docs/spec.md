@@ -36,13 +36,23 @@ tax, NI and student loans, and when will my student loan be repaid or written of
 
 ### Inputs
 
-Progressive: the basics are always shown, and the rest is behind "more options".
+Progressive: the basics are always shown, and the rest is in a "more options" sheet, so closing
+it leaves the results in view.
 
-- Basics: salary, bonus, pension contribution, student loan plan and balance.
-- More options: tax year, Scotland, the bonus month, pension method (salary sacrifice, net pay,
-  relief at source), sacrificing the bonus, employer contribution and NI pass-on, more than one
-  student loan plan, the year repayments started (for write-off), a tax code override, and the
-  projection's assumptions (salary growth, RPI).
+- Basics: salary, bonus, pension contribution from each (with the pension type picked beside
+  it: salary sacrifice, net pay or relief at source), and student loan plans with their balances.
+- More options: tax year, Scotland, the bonus month, employer contribution and NI pass-on, the
+  year repayments started (for write-off), a tax code override, and the projection's
+  assumptions (salary growth, RPI).
+
+### What if
+
+A second scenario to compare against the current figures, such as a pay rise, a different
+pension contribution or a job offer. It starts as a copy of the current figures (or of a preset),
+and the inputs switch between editing either. The comparison shows the change in monthly and
+yearly take-home, pension, deductions and student loans; fields that differ show the other
+scenario's value. The what-if can be adopted as the current figures, saved as a preset, or
+dropped. It's saved with the tool's state, so it's the same on every device.
 
 Out of scope for now: taxable benefits, the High Income Child Benefit Charge, other income,
 self-employment, multiple jobs, directors' NI.
@@ -77,6 +87,10 @@ money goes. They also flag:
 A chart of each loan's balance, year by year, from today's balance until it's repaid or written
 off, with salary growing at the assumed rate and interest following each plan's rules (Plan 2's
 income-linked rate included). It says which comes first, when, and the total you'd repay.
+
+Its breakdown page (`/take-home/student-loans`) has a larger chart, what's repaid and added in
+interest each tax year, and a table by tax year that opens out into each month's pay, interest
+rate, interest, repayment and balance.
 
 ### Tax rules
 

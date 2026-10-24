@@ -47,20 +47,20 @@ export function PresetsButton({
   inputs,
   presets,
   activeId,
-  compareId,
   onLoad,
-  onActiveChange,
-  onCompareChange,
+  onSaved,
+  onCompare,
   reload,
   loadError,
 }: {
+  /** The figures being edited, which saving a preset saves. */
   inputs: TakeHomeInputs;
   presets: TakeHomePreset[] | null;
+  /** The preset the figures were loaded from, if any. */
   activeId: string | null;
-  compareId: string | null;
   onLoad: (preset: TakeHomePreset) => void;
-  onActiveChange: (id: string | null) => void;
-  onCompareChange: (id: string | null) => void;
+  onSaved: (preset: TakeHomePreset) => void;
+  onCompare: (preset: TakeHomePreset) => void;
   reload: () => Promise<void>;
   loadError: string | null;
 }) {
@@ -124,8 +124,7 @@ export function PresetsButton({
             const trimmed = name.trim();
             if (trimmed === "") return;
             void run(async () => {
-              const preset = await createPreset("take-home", trimmed, inputs);
-              onActiveChange(preset.id);
+              onSaved(await createPreset("take-home", trimmed, inputs));
               setName("");
             });
           }}
@@ -155,7 +154,6 @@ export function PresetsButton({
           <ul className="preset-list">
             {presets.map((preset) => {
               const isActive = preset.id === activeId;
-              const isCompared = preset.id === compareId;
               return (
                 <li key={preset.id} className={isActive ? "active" : undefined}>
                   {renaming?.id === preset.id ? (
@@ -224,12 +222,12 @@ export function PresetsButton({
                     <button
                       type="button"
                       className="text-button"
-                      aria-pressed={isCompared}
                       onClick={() => {
-                        onCompareChange(isCompared ? null : preset.id);
+                        onCompare(preset);
+                        setOpen(false);
                       }}
                     >
-                      {isCompared ? "Stop comparing" : "Compare"}
+                      Compare
                     </button>
                     <button
                       type="button"
@@ -250,8 +248,6 @@ export function PresetsButton({
                         if (!window.confirm(`Delete the preset "${preset.name}"?`)) return;
                         void run(async () => {
                           await deletePreset("take-home", preset.id);
-                          if (isActive) onActiveChange(null);
-                          if (isCompared) onCompareChange(null);
                         });
                       }}
                     >

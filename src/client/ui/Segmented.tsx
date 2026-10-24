@@ -51,7 +51,7 @@ export function Chips<T extends string>({
   selected: readonly T[];
   options: readonly { value: T; label: string }[];
   onToggle: (value: T, on: boolean) => void;
-  hint?: string;
+  hint?: string | undefined;
 }) {
   const id = useId();
   return (

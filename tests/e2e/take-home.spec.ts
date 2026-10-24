@@ -3,7 +3,7 @@ import { exampleInputs } from "./fixtures.ts";
 
 async function resetState(page: Page) {
   const state = await page.request.put("/api/tools/take-home/state", {
-    data: { state: exampleInputs },
+    data: { state: { inputs: exampleInputs, whatIf: null } },
   });
   expect(state.ok()).toBe(true);
   const presets = await page.request.get("/api/tools/take-home/presets");
@@ -50,8 +50,8 @@ test("works out take-home pay and keeps edits across reloads", async ({ page }) 
   await expect
     .poll(async () => {
       const res = await page.request.get("/api/tools/take-home/state");
-      const body = (await res.json()) as { saved: { state: { salary: number } } };
-      return body.saved.state.salary;
+      const body = (await res.json()) as { saved: { state: { inputs: { salary: number } } } };
+      return body.saved.state.inputs.salary;
     })
     .toBe(5_000_000);
 
@@ -65,7 +65,8 @@ test("another device sees the same state", async ({ page, browser }) => {
   await expect
     .poll(async () => {
       const res = await page.request.get("/api/tools/take-home/state");
-      return ((await res.json()) as { saved: { state: { salary: number } } }).saved.state.salary;
+      const body = (await res.json()) as { saved: { state: { inputs: { salary: number } } } };
+      return body.saved.state.inputs.salary;
     })
     .toBe(6_100_000);
 
@@ -89,8 +90,8 @@ test("presets can be saved, loaded and compared", async ({ page }) => {
 
   await page.getByRole("button", { name: /Current job/ }).click();
   await page.getByRole("button", { name: "Compare" }).click();
-  await page.getByRole("button", { name: "Close" }).click();
-  await expect(page.getByRole("heading", { name: "Compared with Current job" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Now.*Current job/ })).toBeVisible();
+  await page.getByRole("button", { name: "Stop comparing" }).click();
 
   await page.getByRole("button", { name: /Current job/ }).click();
   await page.locator(".preset-load").filter({ hasText: "Current job" }).click();
@@ -102,8 +103,12 @@ test("flags an invalid tax code next to the field", async ({ page }) => {
   await page.goto("/take-home");
   await page.getByRole("button", { name: /More options/ }).click();
   await page.getByLabel("Tax code").fill("NOTACODE");
+  await expect(page.getByLabel("Tax code")).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByText("That tax code isn't one we recognise")).toBeVisible();
+  await page.getByRole("button", { name: /More options/ }).click();
   await page.getByLabel("Tax code").fill("");
+  await page.getByRole("button", { name: "Done" }).click();
   await expect(hero(page)).toContainText("£4,747");
 });
 
@@ -115,4 +120,46 @@ test("asks for the tax rules to be checked after a Budget", async ({ page }) => 
   await expect(notice).toBeVisible();
   await notice.getByRole("button", { name: "Dismiss" }).click();
   await expect(page.getByText("Dismissed (1)")).toBeVisible();
+});
+
+test("a what-if scenario can be compared, edited and adopted", async ({ page }) => {
+  await page.goto("/take-home");
+  await page.getByRole("button", { name: "What if…" }).click();
+  await expect(page.getByRole("heading", { name: /Now.*What if/ })).toBeVisible();
+  await expect(page.locator(".compare-headline")).toContainText("The same take-home each month");
+
+  // Edits go to the what-if scenario, and show what they changed.
+  await setSalary(page, "105,000");
+  await expect(page.getByText("Now: £95,000")).toBeVisible();
+  await expect(page.locator(".compare-headline")).toContainText("+£");
+
+  await page.getByRole("radio", { name: "Now" }).click();
+  await expect(page.getByLabel("Salary", { exact: true })).toHaveValue("95,000");
+
+  // The comparison is shared state, so it survives a reload.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: /Now.*What if/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Use “What if” from now on/ }).click();
+  await expect(page.getByRole("heading", { name: /Now.*What if/ })).toBeHidden();
+  await expect(page.getByLabel("Salary", { exact: true })).toHaveValue("105,000");
+});
+
+test("the pension type is chosen next to the pension", async ({ page }) => {
+  await page.goto("/take-home");
+  await page.getByLabel("Pension type").selectOption("net-pay");
+  await expect(page.getByLabel("Pension from salary", { exact: true })).toBeVisible();
+  await expect(hero(page)).not.toContainText("£4,747");
+});
+
+test("the student loan breakdown shows each year and month", async ({ page }) => {
+  await page.goto("/take-home");
+  await page.getByRole("link", { name: "Breakdown" }).click();
+  await expect(page.getByRole("heading", { name: "Student loans" })).toBeVisible();
+  const firstYear = page.locator(".year-row").first();
+  await expect(firstYear).toContainText("2026/27");
+  await firstYear.getByRole("button").click();
+  await expect(page.locator(".loan-months tbody tr").first()).toContainText("Oct 2026");
+  await page.getByRole("link", { name: "Take-home pay" }).click();
+  await expect(hero(page)).toContainText("£4,747");
 });

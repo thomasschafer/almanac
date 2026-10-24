@@ -4,7 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { isToolId, type ToolId, toolStates } from "../shared/tools.ts";
+import { isToolId, type ToolId, toolSchemas } from "../shared/tools.ts";
 import type { AppLink } from "../shared/links.ts";
 import { ConflictError, NotFoundError, type Store } from "./store.ts";
 
@@ -82,7 +82,7 @@ export function createApp(deps: AppDeps): Hono {
 
   api.put("/tools/:tool/state", async (c) => {
     const tool = toolParam(c);
-    const { state } = await parseBody(c, z.object({ state: toolStates[tool] }));
+    const { state } = await parseBody(c, z.object({ state: toolSchemas[tool].state }));
     return c.json({ saved: store.putState(tool, state) });
   });
 
@@ -92,7 +92,7 @@ export function createApp(deps: AppDeps): Hono {
     const tool = toolParam(c);
     const { name, state } = await parseBody(
       c,
-      z.object({ name: presetName, state: toolStates[tool] }),
+      z.object({ name: presetName, state: toolSchemas[tool].preset }),
     );
     return c.json({ preset: store.createPreset(tool, name, state) }, 201);
   });
@@ -101,7 +101,7 @@ export function createApp(deps: AppDeps): Hono {
     const tool = toolParam(c);
     const { name, state } = await parseBody(
       c,
-      z.object({ name: presetName, state: toolStates[tool] }),
+      z.object({ name: presetName, state: toolSchemas[tool].preset }),
     );
     return c.json({ preset: store.updatePreset(tool, c.req.param("id"), name, state) });
   });

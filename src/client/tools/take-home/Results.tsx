@@ -27,13 +27,23 @@ function Pounds({ amount, className }: { amount: Pence | number; className?: str
   );
 }
 
-export function Summary({ result }: { result: TakeHomeCalculation }) {
+export function Summary({
+  result,
+  scenarioName,
+}: {
+  result: TakeHomeCalculation;
+  /** Which scenario this is, when comparing. */
+  scenarioName: string | null;
+}) {
   const { normalMonth, bonusMonth, annual, nonBonusNetPayRange: range } = result;
   const varies = range.max - range.min >= 100;
   return (
     <section className="panel summary" aria-label="Take-home pay">
       <div className="summary-main">
-        <p className="kicker">Take-home, a normal month</p>
+        <p className="kicker">
+          Take-home, a normal month
+          {scenarioName !== null && <span className="scenario-tag">{scenarioName}</span>}
+        </p>
         <p className="hero-figure">
           <Pounds amount={normalMonth.netPay} />
         </p>

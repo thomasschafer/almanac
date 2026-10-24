@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type AppLink, appLink } from "../shared/links.ts";
-import { type ToolId, type ToolState, toolStates } from "../shared/tools.ts";
+import { type PresetState, type ToolId, type ToolState, toolSchemas } from "../shared/tools.ts";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -31,15 +31,15 @@ async function request<S extends z.ZodType>(
   return schema.parse(await res.json());
 }
 
-function savedSchema<T extends ToolId>(tool: T) {
-  return z.object({ state: toolStates[tool], updatedAt: z.string() });
+function savedSchema(tool: ToolId) {
+  return z.object({ state: toolSchemas[tool].state, updatedAt: z.string() });
 }
 
-function presetSchema<T extends ToolId>(tool: T) {
+function presetSchema(tool: ToolId) {
   return z.object({
     id: z.string(),
     name: z.string(),
-    state: toolStates[tool],
+    state: toolSchemas[tool].preset,
     createdAt: z.string(),
     updatedAt: z.string(),
   });
@@ -53,7 +53,7 @@ export interface Saved<T extends ToolId> {
 export interface Preset<T extends ToolId> {
   id: string;
   name: string;
-  state: ToolState<T>;
+  state: PresetState<T>;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,7 +85,7 @@ export async function listPresets<T extends ToolId>(tool: T): Promise<Preset<T>[
 export async function createPreset<T extends ToolId>(
   tool: T,
   name: string,
-  state: ToolState<T>,
+  state: PresetState<T>,
 ): Promise<Preset<T>> {
   const body = await request(`/tools/${tool}/presets`, z.object({ preset: presetSchema(tool) }), {
     method: "POST",
@@ -98,7 +98,7 @@ export async function updatePreset<T extends ToolId>(
   tool: T,
   id: string,
   name: string,
-  state: ToolState<T>,
+  state: PresetState<T>,
 ): Promise<Preset<T>> {
   const body = await request(
     `/tools/${tool}/presets/${encodeURIComponent(id)}`,

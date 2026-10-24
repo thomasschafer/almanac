@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { openDatabase } from "./db.ts";
 import { jsonRequest, testApp } from "./test-helpers.ts";
 
-const state = {
+const inputs = {
   taxYear: "2026-27",
   region: "rest-of-uk",
   salary: 4_000_000,
@@ -18,6 +18,7 @@ const state = {
   taxCode: null,
   projection: { salaryGrowthPercent: 3, rpiPercent: 3 },
 };
+const state = { inputs, whatIf: { label: "What if", inputs: { ...inputs, salary: 5_000_000 } } };
 
 describe("tool state", () => {
   it("is null until saved, then returns what was saved", async () => {
@@ -38,7 +39,7 @@ describe("tool state", () => {
     const { app } = testApp();
     const res = await app.request(
       "/api/tools/take-home/state",
-      jsonRequest("PUT", { state: { ...state, salary: -1 } }),
+      jsonRequest("PUT", { state: { ...state, inputs: { ...inputs, salary: -1 } } }),
     );
     expect(res.status).toBe(400);
   });
@@ -50,6 +51,21 @@ describe("tool state", () => {
       jsonRequest("PUT", { state: { ...state, surprise: true } }),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("reads state saved before what-if scenarios existed", async () => {
+    const { app, dbPath } = testApp();
+    const db = openDatabase(dbPath);
+    db.prepare("insert into tool_state (tool, state, updated_at) values (?, ?, ?)").run(
+      "take-home",
+      JSON.stringify(inputs),
+      "2026-10-22T12:00:00.000Z",
+    );
+    db.close();
+    const res = await app.request("/api/tools/take-home/state");
+    expect(await res.json()).toEqual({
+      saved: { state: { inputs, whatIf: null }, updatedAt: "2026-10-22T12:00:00.000Z" },
+    });
   });
 
   it("404s for an unknown tool", async () => {
@@ -72,14 +88,14 @@ describe("presets", () => {
     const { app } = testApp();
     const created = await app.request(
       "/api/tools/take-home/presets",
-      jsonRequest("POST", { name: "Current job", state }),
+      jsonRequest("POST", { name: "Current job", state: inputs }),
     );
     expect(created.status).toBe(201);
     const { preset } = (await created.json()) as { preset: { id: string } };
 
     const renamed = await app.request(
       `/api/tools/take-home/presets/${preset.id}`,
-      jsonRequest("PUT", { name: "Old job", state }),
+      jsonRequest("PUT", { name: "Old job", state: inputs }),
     );
     expect(renamed.status).toBe(200);
 
@@ -100,7 +116,7 @@ describe("presets", () => {
 
   it("refuses two presets with the same name", async () => {
     const { app } = testApp();
-    const body = jsonRequest("POST", { name: "Offer", state });
+    const body = jsonRequest("POST", { name: "Offer", state: inputs });
     expect((await app.request("/api/tools/take-home/presets", body)).status).toBe(201);
     expect((await app.request("/api/tools/take-home/presets", body)).status).toBe(409);
   });

@@ -59,6 +59,7 @@ export function NumberInput<T>({
   placeholder,
   decimals = true,
   trailing,
+  labelAccessory,
 }: {
   label: string;
   value: T | null;
@@ -73,6 +74,8 @@ export function NumberInput<T>({
   decimals?: boolean;
   /** A control at the end of the field, such as a unit toggle. */
   trailing?: ReactNode;
+  /** A control beside the label, such as a picker that changes what the field means. */
+  labelAccessory?: ReactNode;
 }) {
   const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
@@ -83,7 +86,14 @@ export function NumberInput<T>({
 
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      {labelAccessory === undefined ? (
+        <label htmlFor={id}>{label}</label>
+      ) : (
+        <div className="field-label-row">
+          <label htmlFor={id}>{label}</label>
+          {labelAccessory}
+        </div>
+      )}
       <div className={`input${invalid ? " input-invalid" : ""}`}>
         {prefix !== undefined && <span className="input-affix">{prefix}</span>}
         <input

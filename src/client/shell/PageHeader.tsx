@@ -5,22 +5,23 @@ import { NotificationButton } from "./NotificationButton.tsx";
 
 export function PageHeader({
   title,
-  back = true,
+  back = { to: "/", label: "Almanac" },
   actions,
   subtitle,
 }: {
   title: string;
-  back?: boolean;
+  /** Where the back link goes, or null for none. */
+  back?: { to: string; label: string } | null;
   actions?: ReactNode;
   subtitle?: ReactNode;
 }) {
   return (
     <header className="page-header">
       <div className="page-title">
-        {back && (
-          <Link to="/" className="back">
+        {back !== null && (
+          <Link to={back.to} className="back">
             <ChevronLeft size={14} aria-hidden />
-            Almanac
+            {back.label}
           </Link>
         )}
         <h1>{title}</h1>
