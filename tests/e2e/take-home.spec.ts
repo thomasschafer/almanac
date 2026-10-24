@@ -298,6 +298,19 @@ test.describe("without a connection to the laptop", () => {
     await page.getByRole("button", { name: /Notifications/ }).click();
     await expect(page.locator(".notice").filter({ hasText: "aren't saved yet" })).toHaveCount(0);
   });
+
+  test("the student loan page says when the laptop can't be reached, and tries again", async ({
+    page,
+  }) => {
+    await page.route("**/api/tools/take-home/state", (route) => route.abort());
+    await page.goto("/take-home/student-loans");
+    const callout = page.locator(".callout").filter({ hasText: "Couldn't reach the laptop" });
+    await expect(callout).toBeVisible();
+
+    await page.unroute("**/api/tools/take-home/state");
+    await callout.getByRole("button", { name: "Try again" }).click();
+    await expect(page.locator(".year-row").first()).toContainText("2026/27");
+  });
 });
 
 test("an open page moves on to the new tax year when it's looked at again", async ({ page }) => {

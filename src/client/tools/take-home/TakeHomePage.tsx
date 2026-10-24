@@ -9,6 +9,7 @@ import { currentTaxYear } from "./defaults.ts";
 import { taxYearLabel } from "./format.ts";
 import { type Baseline, Inputs } from "./Inputs.tsx";
 import { LoanChart } from "./LoanChart.tsx";
+import { NotLoaded } from "./NotLoaded.tsx";
 import { PresetsButton } from "./Presets.tsx";
 import {
   Breakdown,
@@ -51,18 +52,7 @@ export function TakeHomePage() {
     return (
       <main className="page">
         <PageHeader title="Take-home pay" />
-        {tool.status.kind === "unavailable" ? (
-          <Callout severity="error" title="Couldn't reach the laptop">
-            <p>Your figures will show here once it's reachable. ({tool.status.message})</p>
-            <button type="button" className="button" onClick={tool.retry}>
-              Try again
-            </button>
-          </Callout>
-        ) : (
-          <p className="empty" aria-busy>
-            Loading…
-          </p>
-        )}
+        <NotLoaded />
       </main>
     );
   }

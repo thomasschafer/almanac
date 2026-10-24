@@ -12,6 +12,7 @@ import {
   outcomeSentence,
   ProjectionProblem,
 } from "./LoanChart.tsx";
+import { NotLoaded } from "./NotLoaded.tsx";
 import { Callout } from "./Results.tsx";
 
 interface YearRow {
@@ -65,9 +66,7 @@ export function StudentLoansPage() {
     return (
       <main className="page">
         {header}
-        <p className="empty" aria-busy>
-          Loading…
-        </p>
+        <NotLoaded />
       </main>
     );
   }
