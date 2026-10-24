@@ -321,3 +321,23 @@ test("a tax code typed with spaces doesn't make a preset look edited", async ({ 
   await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("button", { name: "Coded", exact: true })).toBeVisible();
 });
+
+test("the allowance taper callout gives the Scottish rate", async ({ page }) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    region: "scotland",
+    salary: asPence(11_500_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    pension: {
+      ...exampleInputs.pension,
+      method: "relief-at-source",
+      fromSalary: { kind: "annual", amount: asPence(500_000) },
+    },
+  });
+  await page.goto("/take-home");
+  const callout = page.locator(".callout").filter({ hasText: "allowance is being withdrawn" });
+  await expect(callout).toContainText("Between £100,000 and £125,140 of adjusted net income");
+  await expect(callout).toContainText("an effective 67.5%");
+  await expect(callout).toContainText("Another £10,000 a year into your pension");
+  await expect(callout).toContainText("(£8,000 from your pay, with basic-rate relief added)");
+});
