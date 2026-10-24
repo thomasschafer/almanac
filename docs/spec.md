@@ -81,6 +81,9 @@ by 12:
 - Amounts are whole pence and rounded as HMRC payroll does (student loan deductions round down
   to the pound).
 
+The page works on today's date, brought up to date whenever it comes back into view, so an app
+left open moves on to a new tax year or interest year when it's next looked at.
+
 Results show a normal month (the most common net pay outside the bonus month, earliest on a
 tie), the bonus month, and the year, with the breakdown of where the money goes. On a cumulative
 code, months after a large bonus can refund tax taken earlier in the year: the normal month then

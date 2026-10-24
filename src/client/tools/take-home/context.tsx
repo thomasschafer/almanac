@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { calculateTakeHome } from "../../../shared/take-home/engine.ts";
 import type { TakeHomeInputs } from "../../../shared/take-home/inputs.ts";
@@ -62,8 +62,26 @@ function useUi(): [Ui, (change: Partial<Ui>) => void] {
   return [ui, change];
 }
 
+/**
+ * The current time, brought up to date whenever the page comes back into view, so an app left
+ * open moves on to a new tax year or interest year when it's next looked at.
+ */
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") setNow(new Date());
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+  return now;
+}
+
 export function useTakeHomeValue() {
-  const [now] = useState(() => new Date());
+  const now = useNow();
   const defaults = useCallback(
     (): TakeHomeState => ({ inputs: defaultInputs(now), whatIf: null }),
     [now],

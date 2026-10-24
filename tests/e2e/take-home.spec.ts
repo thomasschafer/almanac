@@ -295,6 +295,17 @@ test.describe("without a connection to the laptop", () => {
   });
 });
 
+test("an open page moves on to the new tax year when it's looked at again", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2027-04-05T12:00:00+01:00"));
+  await page.goto("/take-home/student-loans");
+  await expect(page.locator(".year-row").first()).toContainText("2026/27");
+
+  await page.clock.setFixedTime(new Date("2027-04-06T12:00:00+01:00"));
+  // As the page coming back to the front would. The tests' TypeScript has no DOM types.
+  await page.evaluate('document.dispatchEvent(new Event("visibilitychange"))');
+  await expect(page.locator(".year-row").first()).toContainText("2027/28");
+});
+
 test("a tax code typed with spaces doesn't make a preset look edited", async ({ page }) => {
   await saveInputs(page, { ...exampleInputs, taxCode: "1100L" });
   await page.goto("/take-home");
