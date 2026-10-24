@@ -166,6 +166,10 @@ test("the student loan breakdown shows each year and month", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Student loans" })).toBeVisible();
   const firstYear = page.locator(".year-row").first();
   await expect(firstYear).toContainText("2026/27");
+  const stats = page.locator(".detail-stats");
+  await expect(stats).toContainText(/Interest added£[\d,]+/);
+  await expect(stats).toContainText(/Repaid£[\d,]+/);
+  await expect(stats).not.toContainText("of all repaid");
   await firstYear.getByRole("button").click();
   await expect(page.locator(".loan-months tbody tr").first()).toContainText("Oct 2026");
   await page.getByRole("link", { name: "Take-home pay" }).click();
@@ -185,6 +189,11 @@ test("a loan with an unknown end says what period its totals cover", async ({ pa
   await expect(panel.locator(".loan-totals")).toContainText("Repaid to 5 Apr 2086");
   await expect(panel.locator(".loan-totals")).toContainText("Interest added to 5 Apr 2086");
   await expect(panel.locator(".end-dot")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Breakdown" }).click();
+  const stats = page.locator(".detail-stats");
+  await expect(stats).toContainText("Interest added to 5 Apr 2086");
+  await expect(stats).toContainText("Repaid to 5 Apr 2086");
 });
 
 test("says when repayments start, and when a loan is already repaid", async ({ page }) => {

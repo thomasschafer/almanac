@@ -11,6 +11,7 @@ import {
   LoanTotals,
   outcomeSentence,
   ProjectionProblem,
+  totalsUntil,
 } from "./LoanChart.tsx";
 import { NotLoaded } from "./NotLoaded.tsx";
 import { Callout } from "./Results.tsx";
@@ -158,6 +159,7 @@ function LoanDetail({
 }) {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const years = byTaxYear(loan.months);
+  const until = totalsUntil([loan]);
   const first = loan.months[0];
   const repaymentsStart = loan.repaymentsStart;
   const months = loan.months.filter(
@@ -204,10 +206,12 @@ function LoanDetail({
           </dd>
         </div>
         <div>
-          <dt>Interest, of all repaid</dt>
-          <dd className="num">
-            {loan.totalRepaid > 0 ? percent((loan.totalInterest / loan.totalRepaid) * 100) : "—"}
-          </dd>
+          <dt>Interest added{until}</dt>
+          <dd className="num">{gbp(loan.totalInterest)}</dd>
+        </div>
+        <div>
+          <dt>Repaid{until}</dt>
+          <dd className="num">{gbp(loan.totalRepaid)}</dd>
         </div>
       </dl>
       <YearBars years={years} />

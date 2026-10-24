@@ -331,6 +331,23 @@ export function LoanChart({
 }
 
 /**
+ * " to 5 Apr 2086" when any of the loans' ends isn't known within the projection, so totals
+ * across them only cover the projection, or "" when they cover each loan's whole life.
+ */
+export function totalsUntil(loans: readonly LoanProjection[]): string {
+  const open = loans.some(
+    ({ outcome }) =>
+      outcome.kind === "outstanding" ||
+      (outcome.kind === "unknown" && outcome.missing === "first-repayment-year"),
+  );
+  const lastMonth = loans
+    .flatMap((loan) => loan.months.map((month) => month.date))
+    .sort()
+    .at(-1);
+  return open && lastMonth !== undefined ? ` to ${formatDay(lastMonth)}` : "";
+}
+
+/**
  * What's repaid and added in interest across the loans. When a loan's end isn't known within the
  * projection, the totals only cover the projection, so they say when that ends.
  */
@@ -339,16 +356,7 @@ export function LoanTotals({
 }: {
   projection: Extract<StudentLoanProjection, { status: "ok" }>;
 }) {
-  const open = projection.loans.some(
-    ({ outcome }) =>
-      outcome.kind === "outstanding" ||
-      (outcome.kind === "unknown" && outcome.missing === "first-repayment-year"),
-  );
-  const lastMonth = projection.loans
-    .flatMap((loan) => loan.months.map((month) => month.date))
-    .sort()
-    .at(-1);
-  const until = open && lastMonth !== undefined ? ` to ${formatDay(lastMonth)}` : "";
+  const until = totalsUntil(projection.loans);
   return (
     <dl className="loan-totals">
       <div>
