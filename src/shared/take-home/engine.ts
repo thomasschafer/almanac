@@ -1,4 +1,4 @@
-import { asPence, type Pence } from "../money.ts";
+import { asPence, fromPounds, type Pence } from "../money.ts";
 import {
   floorToPound,
   itemAt,
@@ -10,7 +10,6 @@ import {
   wholeRate,
 } from "./arithmetic.ts";
 import type { StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
-import { marginalRates, type MarginalContext } from "./marginal.ts";
 import { employeeNi, employerNi, type NiRates } from "./ni.ts";
 import { payYear, reliefAtSourcePaidFromPay, type MonthPay } from "./pay.ts";
 import { annualMarginalRate, annualTax, payeYear } from "./paye.ts";
@@ -20,10 +19,13 @@ import type {
   InputIssue,
   MonthResult,
   PayBreakdown,
+  PayChange,
   PensionBreakdown,
   ProvisionalFigure,
   StudentLoanDeduction,
+  TakeHomeCalculation,
   TakeHomeFlag,
+  TakeHomeInvalid,
   TakeHomeResult,
   TaxCodeUsed,
 } from "./result.ts";
@@ -196,14 +198,76 @@ function percentOfGross(amount: Pence, gross: Pence): number {
   return (100 * amount) / gross;
 }
 
+type NotTakenLoan = Extract<TakeHomeFlag, { kind: "student-loans-not-taken" }>["loans"][number];
+
+/** A year's figures without the effect of extra pay, which is worked out from them. */
+type YearCalculation = Omit<TakeHomeCalculation, "nextThousand">;
+
+const extraPay = fromPounds(1_000);
+
 /**
  * Works out a year's take-home pay by simulating monthly PAYE payroll under `rules`, which must be
  * the rules for `inputs.taxYear`. Problems with the inputs (such as a mistyped tax code) come back
  * as an invalid result rather than an exception.
  */
-type NotTakenLoan = Extract<TakeHomeFlag, { kind: "student-loans-not-taken" }>["loans"][number];
-
 export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): TakeHomeResult {
+  const year = calculateYear(inputs, rules);
+  if (year.status !== "ok") {
+    return year;
+  }
+  const withExtra = (more: TakeHomeInputs): PayChange => {
+    const after = calculateYear(more, rules);
+    if (after.status !== "ok") {
+      throw new Error(`another ${String(extraPay)}p of pay made the inputs invalid`);
+    }
+    return payChange(year.annual, after.annual);
+  };
+  return {
+    ...year,
+    nextThousand: {
+      salary: withExtra({ ...inputs, salary: asPence(inputs.salary + extraPay) }),
+      bonus: withExtra({
+        ...inputs,
+        bonus: { ...inputs.bonus, amount: asPence(inputs.bonus.amount + extraPay) },
+      }),
+    },
+  };
+}
+
+/** The change from one year's figures to another's, for the same loans. */
+function payChange(before: PayBreakdown, after: PayBreakdown): PayChange {
+  const change: PayChange = {
+    extraPay: minus(after.grossPay, before.grossPay),
+    takeHome: minus(after.netPay, before.netPay),
+    incomeTax: minus(after.incomeTax, before.incomeTax),
+    nationalInsurance: minus(after.nationalInsurance, before.nationalInsurance),
+    studentLoans: after.studentLoans.map(({ plan, amount }) => {
+      const previous = before.studentLoans.find((loan) => loan.plan === plan);
+      if (previous === undefined) {
+        throw new Error(`no ${plan} repayment to compare with`);
+      }
+      return { plan, amount: minus(amount, previous.amount) };
+    }),
+    pensionFromPay: minus(pensionFromPay(after.pension), pensionFromPay(before.pension)),
+    pensionTotal: minus(after.pension.total, before.pension.total),
+  };
+  const parts = sum([
+    change.takeHome,
+    change.incomeTax,
+    change.nationalInsurance,
+    ...change.studentLoans.map((loan) => loan.amount),
+    change.pensionFromPay,
+  ]);
+  if (parts !== change.extraPay) {
+    throw new Error("the change in pay doesn't add up to the extra pay");
+  }
+  return change;
+}
+
+function calculateYear(
+  inputs: TakeHomeInputs,
+  rules: TaxYearRules,
+): YearCalculation | TakeHomeInvalid {
   if (inputs.taxYear !== rules.id) {
     throw new Error(`inputs are for ${inputs.taxYear} but the rules are for ${rules.id}`);
   }
@@ -428,23 +492,6 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   };
 
   const inTaper = adjustedNetIncome > taperThreshold && allowanceAfterTaper > 0;
-  const marginalContext: MarginalContext = {
-    months: payMonths,
-    bonusMonth: inputs.bonus.month,
-    code,
-    bands,
-    taperRate:
-      taxCode.source === "derived" && adjustedNetIncome >= taperThreshold && allowanceAfterTaper > 0
-        ? taperRate
-        : null,
-    niRates,
-    plans: duePlans,
-    studentLoanRules,
-    method: pension.method,
-    reliefAtSourceRate: rules.pensions.reliefAtSourceRate.value,
-    niableFractionOfSacrifice: pay.niableFractionOfSacrifice,
-  };
-
   const effectiveRates: EffectiveRates | null =
     grossPay === 0
       ? null
@@ -532,10 +579,6 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
     adjustedNetIncome,
     personalAllowance: { full: fullAllowance, afterTaper: allowanceAfterTaper },
     effectiveRates,
-    marginalRates: {
-      salary: marginalRates(marginalContext, "salary", pension.fromSalary),
-      bonus: marginalRates(marginalContext, "bonus", pension.fromBonus),
-    },
     annualAllowance,
     flags,
   };

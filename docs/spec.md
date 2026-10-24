@@ -93,7 +93,11 @@ Results show a normal month (the most common net pay outside the bonus month, ea
 tie), the bonus month, and the year, with the breakdown of where the money goes. On a cumulative
 code, months after a large bonus can refund tax taken earlier in the year: the normal month then
 says it includes a refund, and the breakdown shows the refund as its own line, so the parts still
-add up to the gross pay. They also flag:
+add up to the gross pay.
+
+They show what another £1,000 a year of salary, or of bonus, would change: take-home, tax, NI,
+each student loan and the pension. The year is worked out again with the extra pay, so the
+figures are right where it crosses a threshold. The results also flag:
 
 - where the personal allowance is being withdrawn (between £100,000 and £125,140 of adjusted net
   income in 2026/27), the effective rate that leaves (60%, or 67.5% on Scottish rates), and how

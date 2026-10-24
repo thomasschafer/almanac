@@ -473,3 +473,20 @@ test("relief at source shows the extra relief to claim outside payroll", async (
   await page.getByLabel("Pension type").selectOption("net-pay");
   await expect(page.locator(".summary")).not.toContainText("Extra tax relief");
 });
+
+test("the next £1,000 is worked out across a threshold", async ({ page }) => {
+  // From £99,500, half of another £1,000 is taxed at 40% and half in the allowance taper at 60%.
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(9_950_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    pension: { ...exampleInputs.pension, fromSalary: { kind: "percent", percent: 0 } },
+    studentLoans: [],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator("section").filter({ has: page.locator("#next-heading") });
+  await expect(panel).toContainText("You'd keep £480 of another £1,000 of salary a year.");
+  await expect(panel.getByRole("row", { name: "Income tax" })).toContainText("£500");
+  await expect(panel.getByRole("row", { name: "National Insurance" })).toContainText("£20");
+  await expect(panel).not.toContainText("%");
+});

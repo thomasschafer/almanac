@@ -126,10 +126,25 @@ describe("the personal allowance taper", () => {
     });
   });
 
-  it("puts the next £1 of salary at 60% tax plus 2% NI", () => {
-    expect(result.marginalRates.salary.incomeTaxPercent).toBeCloseTo(60);
-    expect(result.marginalRates.salary.nationalInsurancePercent).toBeCloseTo(2);
-    expect(result.marginalRates.salary.takeHomePercent).toBeCloseTo(38);
+  it("takes 60% tax and 2% NI on the next £1,000 of salary", () => {
+    // NI on each month's extra £83.33 rounds to 4p more over the year.
+    expect(result.nextThousand.salary).toEqual({
+      extraPay: pounds(1_000),
+      takeHome: pounds(379.96),
+      incomeTax: pounds(600),
+      nationalInsurance: pounds(20.04),
+      studentLoans: [],
+      pensionFromPay: 0,
+      pensionTotal: 0,
+    });
+  });
+
+  it("works out the next £1,000 across the start of the taper", () => {
+    // From £99,500, half the extra is taxed at 40% and half at 60%: a rate at the current
+    // position alone would say 40%.
+    const below = calculate({ salary: 99_500 });
+    expect(below.nextThousand.salary.incomeTax).toBe(pounds(500));
+    expect(below.nextThousand.bonus.incomeTax).toBe(pounds(500));
   });
 
   it("derives 0T once the allowance is gone", () => {
@@ -149,7 +164,7 @@ describe("the personal allowance taper", () => {
     const overridden = calculate({ salary: 110_000, taxCode: "1257L" });
     expect(overridden.taxCode).toMatchObject({ source: "override", display: "1257L" });
     expect(overridden.annual.incomeTax).toBeLessThan(result.annual.incomeTax);
-    expect(overridden.marginalRates.salary.incomeTaxPercent).toBeCloseTo(40);
+    expect(overridden.nextThousand.salary.incomeTax).toBe(pounds(400));
   });
 });
 
@@ -163,14 +178,14 @@ describe("Scotland", () => {
     expect(result.annual.incomeTax).toBe(pounds(8_977.85));
   });
 
-  it("puts the next £1 at the Scottish higher rate", () => {
-    expect(result.marginalRates.salary.incomeTaxPercent).toBeCloseTo(42);
+  it("takes the Scottish higher rate on the next £1,000", () => {
+    expect(result.nextThousand.salary.incomeTax).toBe(pounds(420));
   });
 
-  it("gives 67.5% in the taper for an advanced rate taxpayer", () => {
-    expect(
-      calculate({ region: "scotland", salary: 110_000 }).marginalRates.salary.incomeTaxPercent,
-    ).toBeCloseTo(67.5);
+  it("takes 67.5% in the taper for an advanced rate taxpayer", () => {
+    expect(calculate({ region: "scotland", salary: 110_000 }).nextThousand.salary.incomeTax).toBe(
+      pounds(675),
+    );
   });
 
   it("flags a code for the wrong regime", () => {
@@ -416,7 +431,11 @@ describe("more than one student loan plan", () => {
       { plan: "postgraduate", amount: pounds(45) },
       { plan: "plan2", amount: pounds(4) },
     ]);
-    expect(result.marginalRates.salary.studentLoansPercent).toBeCloseTo(15);
+    // 6% and 9% of the extra, each month rounded down to the pound.
+    expect(result.nextThousand.salary.studentLoans).toEqual([
+      { plan: "postgraduate", amount: pounds(49) },
+      { plan: "plan2", amount: pounds(96) },
+    ]);
   });
 
   it("handles three plans", () => {
@@ -620,13 +639,27 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
     });
   });
 
-  it("puts the next £1 at 45% tax, 2% NI and 9% student loan", () => {
-    for (const rates of [result.marginalRates.salary, result.marginalRates.bonus]) {
-      expect(rates.incomeTaxPercent).toBeCloseTo(45);
-      expect(rates.nationalInsurancePercent).toBeCloseTo(2);
-      expect(rates.studentLoansPercent).toBeCloseTo(9);
-      expect(rates.takeHomePercent).toBeCloseTo(44);
-    }
+  it("takes 45% tax, 2% NI and 9% student loan on the next £1,000", () => {
+    // Spread across the months, student loans round down to the pound each month and take £96;
+    // the employer's 8% of salary goes into the pension too.
+    expect(result.nextThousand.salary).toEqual({
+      extraPay: pounds(1_000),
+      takeHome: pounds(434.08),
+      incomeTax: pounds(450),
+      nationalInsurance: pounds(19.92),
+      studentLoans: [{ plan: "plan2", amount: pounds(96) }],
+      pensionFromPay: 0,
+      pensionTotal: pounds(79.93),
+    });
+    expect(result.nextThousand.bonus).toEqual({
+      extraPay: pounds(1_000),
+      takeHome: pounds(440),
+      incomeTax: pounds(450),
+      nationalInsurance: pounds(20),
+      studentLoans: [{ plan: "plan2", amount: pounds(90) }],
+      pensionFromPay: 0,
+      pensionTotal: 0,
+    });
   });
 
   it("lands in the 60% band when half the bonus is sacrificed too", () => {
@@ -637,14 +670,16 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
       method: "salary-sacrifice",
       gross: pounds(20_000),
     });
-    // Half of the next £1 of bonus is sacrificed; the other half is taxed at 40% and withdraws
-    // 25p of allowance, which is taxed at 40% too.
-    expect(sacrificingBonus.marginalRates.bonus).toMatchObject({
-      incomeTaxPercent: expect.closeTo(30, 5) as number,
-      nationalInsurancePercent: expect.closeTo(1, 5) as number,
-      studentLoansPercent: expect.closeTo(4.5, 5) as number,
-      pensionPercent: expect.closeTo(50, 5) as number,
-      takeHomePercent: expect.closeTo(14.5, 5) as number,
+    // Half of the next £1,000 of bonus is sacrificed; the other half is taxed at 40% and
+    // withdraws £250 of allowance, which is taxed at 40% too.
+    expect(sacrificingBonus.nextThousand.bonus).toEqual({
+      extraPay: pounds(1_000),
+      takeHome: pounds(145),
+      incomeTax: pounds(300),
+      nationalInsurance: pounds(10),
+      studentLoans: [{ plan: "plan2", amount: pounds(45) }],
+      pensionFromPay: pounds(500),
+      pensionTotal: pounds(500),
     });
   });
 });
@@ -673,7 +708,7 @@ describe("a student loan that isn't due yet", () => {
     const result = calculate({ salary: 45_000, loans: [notDue] });
     expect(result.annual.studentLoanTotal).toBe(0);
     expect(result.annual.studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
-    expect(result.marginalRates.salary.studentLoansPercent).toBe(0);
+    expect(result.nextThousand.salary.studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
     expect(flag(result, "student-loans-not-taken")).toEqual({
       kind: "student-loans-not-taken",
       loans: [{ plan: "plan2", reason: { kind: "not-due", firstRepaymentYear: 2027 } }],

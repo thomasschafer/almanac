@@ -94,20 +94,3 @@ export function studentLoanRepayments(
     return { plan, amount };
   });
 }
-
-/** The share of the next pound of a month's NI-able pay that goes to each plan. */
-export function marginalStudentLoanRates(
-  niablePay: Pence,
-  plans: readonly StudentLoanPlan[],
-  rules: StudentLoanRules,
-): { plan: StudentLoanPlan; rate: Rate }[] {
-  const undergraduate = undergraduatePlans(plans, rules);
-  const receiving = undergraduate.filter((plan) => niablePay >= plan.threshold).at(-1);
-  return plans.map((plan) => {
-    if (plan === "postgraduate") {
-      const { threshold, rate } = rules.postgraduate;
-      return { plan, rate: niablePay >= threshold.value.monthly ? rate.value : (0 as Rate) };
-    }
-    return { plan, rate: receiving?.plan === plan ? receiving.rate : (0 as Rate) };
-  });
-}

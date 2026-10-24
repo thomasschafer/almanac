@@ -247,34 +247,3 @@ function annualBands(bands: IncomeTaxBands, basicBandExtension: Pence): BoundedB
     band === bands.basic ? { ...band, width: asPence(band.width + basicBandExtension) } : band,
   );
 }
-
-/** The rate the next pound of taxable income to date would be taxed at after `month` months. */
-export function marginalRate(taxableToDate: Pence, month: number, bands: IncomeTaxBands): Rate {
-  const cumulative = cumulativeBands(bands);
-  if (taxableToDate < 0) {
-    return 0 as Rate;
-  }
-  const index = cumulative.limits.findIndex(
-    (limit) => taxableToDate < Math.floor((limit * 100 * month) / monthsInYear),
-  );
-  return itemAt(cumulative.rates, index === -1 ? cumulative.limits.length : index);
-}
-
-export interface TaxPosition {
-  /** Taxable pay to date after the code's allowance or K adjustment. */
-  readonly taxableToDate: Pence;
-  readonly month: number;
-}
-
-/** Where a code leaves pay to date after `month` months, for marginal rates. */
-export function taxPosition(
-  code: Extract<TaxCode, { kind: "allowance" | "k" }>,
-  payToDate: Pence,
-  month: number,
-): TaxPosition {
-  const adjustment = monthlyAdjustment(code.number) * month;
-  return {
-    taxableToDate: asPence(code.kind === "k" ? payToDate + adjustment : payToDate - adjustment),
-    month,
-  };
-}

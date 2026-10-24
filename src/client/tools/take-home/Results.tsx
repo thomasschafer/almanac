@@ -3,8 +3,8 @@ import { useState } from "react";
 import type { Pence } from "../../../shared/money.ts";
 import type {
   InputIssue,
-  MarginalRates,
   PayBreakdown,
+  PayChange,
   TakeHomeCalculation,
   TakeHomeFlag,
 } from "../../../shared/take-home/result.ts";
@@ -261,26 +261,27 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
   );
 }
 
-export function NextPound({ result }: { result: TakeHomeCalculation }) {
+/** What another £1,000 of salary or bonus would change, from working the year out again. */
+export function NextThousand({ result }: { result: TakeHomeCalculation }) {
   const hasBonus = result.bonusMonth !== null;
   const [of, setOf] = useState<"salary" | "bonus">("salary");
-  const rates: MarginalRates = result.marginalRates[hasBonus ? of : "salary"];
-  const per = (p: number) => gbp(p * 1000);
+  const stream = hasBonus ? of : "salary";
+  const change: PayChange = result.nextThousand[stream];
   const rows = [
-    { label: "Income tax", percent: rates.incomeTaxPercent },
-    { label: "National Insurance", percent: rates.nationalInsurancePercent },
-    ...rates.studentLoans.map((l) => ({
-      label: studentLoanPlanRules[l.plan].name,
-      percent: l.percent,
+    { label: "Income tax", amount: change.incomeTax },
+    { label: "National Insurance", amount: change.nationalInsurance },
+    ...change.studentLoans.map((loan) => ({
+      label: studentLoanPlanRules[loan.plan].name,
+      amount: loan.amount,
     })),
-    { label: "Your pension", percent: rates.pensionPercent },
-  ].filter((r) => r.percent > 0.005);
+    { label: "Your pension", amount: change.pensionFromPay },
+  ].filter((row) => row.amount !== 0);
 
   return (
     <section className="panel" aria-labelledby="next-heading">
       <div className="panel-head">
         <h2 id="next-heading" className="kicker">
-          The next £1,000
+          The next <span className="num">{gbp(change.extraPay)}</span>
         </h2>
         {hasBonus && (
           <Segmented
@@ -296,20 +297,25 @@ export function NextPound({ result }: { result: TakeHomeCalculation }) {
         )}
       </div>
       <p className="lede">
-        You'd keep <span className="num strong">{per(rates.takeHomePercent)}</span> of another
-        £1,000 of {hasBonus ? of : "salary"}.
+        You'd keep <span className="num strong">{gbp(change.takeHome)}</span> of another{" "}
+        <span className="num">{gbp(change.extraPay)}</span> of {stream} a year.
       </p>
       <table className="legend-table compact">
         <tbody>
           {rows.map((row) => (
             <tr key={row.label}>
               <td>{row.label}</td>
-              <td className="num">{per(row.percent)}</td>
-              <td className="num muted">{percent(row.percent, 1)}</td>
+              <td className="num">{gbp(row.amount)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {change.pensionTotal !== change.pensionFromPay && change.pensionTotal !== 0 && (
+        <p className="panel-note">
+          In all, <span className="num">{gbp(change.pensionTotal)}</span> more goes into your
+          pension.
+        </p>
+      )}
     </section>
   );
 }

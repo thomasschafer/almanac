@@ -38,11 +38,3 @@ export function employerNi(pay: Pence, rates: NiRates): Pence {
     rateOfForNi(positivePart(asPence(pay - rates.upperEarningsLimit)), rates.employerRate),
   ]);
 }
-
-/** The employee rate on the next pound of a month's pay. */
-export function marginalEmployeeNiRate(pay: Pence, rates: NiRates): Rate {
-  if (pay < rates.primaryThreshold) {
-    return 0 as Rate;
-  }
-  return pay < rates.upperEarningsLimit ? rates.mainRate : rates.upperRate;
-}

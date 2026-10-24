@@ -111,15 +111,23 @@ export interface EffectiveRates {
   readonly totalPercent: number;
 }
 
-/** Where the next £1 goes, as percentages of that £1. */
-export interface MarginalRates {
-  readonly incomeTaxPercent: number;
-  readonly nationalInsurancePercent: number;
-  readonly studentLoans: readonly { readonly plan: StudentLoanPlan; readonly percent: number }[];
-  readonly studentLoansPercent: number;
-  /** Taken from pay into the pension. */
-  readonly pensionPercent: number;
-  readonly takeHomePercent: number;
+/**
+ * What a year's figures would change by with some extra pay, worked out by calculating the year
+ * again with it. The parts add up to the extra pay: take-home + tax + NI + student loans + pension
+ * from pay.
+ */
+export interface PayChange {
+  /** The extra gross pay. */
+  readonly extraPay: Pence;
+  readonly takeHome: Pence;
+  readonly incomeTax: Pence;
+  readonly nationalInsurance: Pence;
+  /** One entry per plan, in the order of the inputs. */
+  readonly studentLoans: readonly StudentLoanDeduction[];
+  /** Taken from pay into the pension, however it's paid. */
+  readonly pensionFromPay: Pence;
+  /** Everything into the pension, including any employer contribution and provider top-up. */
+  readonly pensionTotal: Pence;
 }
 
 export interface AnnualAllowanceCheck {
@@ -235,7 +243,8 @@ export interface TakeHomeCalculation {
   };
   /** Null when there's no gross pay. */
   readonly effectiveRates: EffectiveRates | null;
-  readonly marginalRates: { readonly salary: MarginalRates; readonly bonus: MarginalRates };
+  /** The effect of another £1,000 of salary, and of another £1,000 of bonus in the bonus month. */
+  readonly nextThousand: { readonly salary: PayChange; readonly bonus: PayChange };
   readonly annualAllowance: AnnualAllowanceCheck;
   readonly flags: readonly TakeHomeFlag[];
 }

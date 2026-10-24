@@ -130,14 +130,11 @@ describe("take-home as salary rises", () => {
   });
 });
 
-describe("marginal rates", () => {
-  // Compare the worked-out rates with the change in take-home over £1,200 of salary or £1,000 of
-  // bonus, away from any threshold so the change is all at one rate. Student loans are rounded
-  // down to the pound each month, which can move the change by up to £12, or 1%.
+describe("the next £1,000", () => {
   it.each([
     [{ salary: 30_000, loans: ["plan2"] }],
     [{ salary: 70_000, bonus: 10_000, loans: ["plan2"], fromSalary: { percent: 5 } }],
-    [{ salary: 112_000, bonus: 0, fromSalary: { percent: 4 } }],
+    [{ salary: 99_800, bonus: 0, fromSalary: { percent: 4 }, employer: { percent: 5 } }],
     [{ salary: 160_000, bonus: 50_000, method: "net-pay", fromSalary: { percent: 10 } }],
     [
       {
@@ -146,20 +143,34 @@ describe("marginal rates", () => {
         region: "scotland",
         method: "relief-at-source",
         fromSalary: { percent: 5 },
+        employer: { percent: 3 },
       },
     ],
-  ] as const)("match the change in take-home for %j", (options) => {
+  ] as const)("is the change from working out the year again, for %j", (options) => {
     const base = calculate(options);
-    const moreSalary = calculate({ ...options, salary: options.salary + 1_200 });
-    const moreBonus = calculate({
-      ...options,
-      bonus: ("bonus" in options ? options.bonus : 0) + 1_000,
-    });
-    const salaryChange = (moreSalary.annual.netPay - base.annual.netPay) / pounds(1_200);
-    const bonusChange = (moreBonus.annual.netPay - base.annual.netPay) / pounds(1_000);
-    expect(Math.abs(salaryChange * 100 - base.marginalRates.salary.takeHomePercent)).toBeLessThan(
-      1,
-    );
-    expect(Math.abs(bonusChange * 100 - base.marginalRates.bonus.takeHomePercent)).toBeLessThan(1);
+    const bonus = "bonus" in options ? options.bonus : 0;
+    const again = {
+      salary: calculate({ ...options, salary: options.salary + 1_000 }),
+      bonus: calculate({ ...options, bonus: bonus + 1_000 }),
+    };
+    for (const stream of ["salary", "bonus"] as const) {
+      const change = base.nextThousand[stream];
+      const after = again[stream].annual;
+      expect(change.extraPay).toBe(pounds(1_000));
+      expect(change.takeHome).toBe(after.netPay - base.annual.netPay);
+      expect(change.incomeTax).toBe(after.incomeTax - base.annual.incomeTax);
+      expect(change.nationalInsurance).toBe(
+        after.nationalInsurance - base.annual.nationalInsurance,
+      );
+      expect(change.pensionTotal).toBe(after.pension.total - base.annual.pension.total);
+      const loans = change.studentLoans.reduce((total, loan) => total + loan.amount, 0);
+      expect(
+        change.takeHome +
+          change.incomeTax +
+          change.nationalInsurance +
+          loans +
+          change.pensionFromPay,
+      ).toBe(pounds(1_000));
+    }
   });
 });

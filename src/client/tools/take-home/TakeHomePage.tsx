@@ -17,7 +17,7 @@ import {
   Insights,
   Issues,
   Months,
-  NextPound,
+  NextThousand,
   StickySummary,
   Summary,
 } from "./Results.tsx";
@@ -203,7 +203,7 @@ export function TakeHomePage() {
               <Insights result={ok} />
               <div className="results-grid">
                 <Breakdown result={ok} />
-                <NextPound result={ok} />
+                <NextThousand result={ok} />
               </div>
               {editedInputs.studentLoans.length > 0 && (
                 <LoanChart projection={calculation.projection} detailsLink />
