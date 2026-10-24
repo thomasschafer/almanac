@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { isToolId, type ToolId, toolStates } from "../shared/tools.ts";
+import type { AppLink } from "../shared/links.ts";
 import { ConflictError, NotFoundError, type Store } from "./store.ts";
 
 export interface AppDeps {
@@ -17,6 +18,7 @@ export interface AppDeps {
   allowedLogin: string | null;
   /** Directory containing the built client, or null to serve the API only. */
   clientDir: string | null;
+  links: readonly AppLink[];
 }
 
 const presetName = z.string().trim().min(1).max(80);
@@ -73,6 +75,8 @@ export function createApp(deps: AppDeps): Hono {
     await next();
     return undefined;
   });
+
+  api.get("/links", (c) => c.json({ links: deps.links }));
 
   api.get("/tools/:tool/state", (c) => c.json({ saved: store.getState(toolParam(c)) }));
 

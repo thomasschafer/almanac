@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { type AppLink, appLink } from "../shared/links.ts";
 
 const envSchema = z.object({
   ALMANAC_DATA_DIR: z
@@ -15,6 +16,21 @@ const envSchema = z.object({
    * tests.
    */
   ALMANAC_AUTH: z.enum(["tailscale", "none"]).default("tailscale"),
+  /**
+   * Other apps served from this machine over Tailscale, linked from the index, as a JSON array of
+   * { name, description, httpsPort }. Set by whatever decides the ports (the owner's dotfiles).
+   */
+  ALMANAC_LINKS: z
+    .string()
+    .default("[]")
+    .transform((json, ctx) => {
+      try {
+        return z.array(appLink).parse(JSON.parse(json));
+      } catch (error) {
+        ctx.addIssue({ code: "custom", message: `ALMANAC_LINKS is invalid: ${String(error)}` });
+        return z.NEVER;
+      }
+    }),
 });
 
 export interface Config {
@@ -23,6 +39,7 @@ export interface Config {
   host: string;
   port: number;
   auth: "tailscale" | "none";
+  links: AppLink[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
@@ -33,5 +50,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     host: parsed.ALMANAC_HOST,
     port: parsed.ALMANAC_PORT,
     auth: parsed.ALMANAC_AUTH,
+    links: parsed.ALMANAC_LINKS,
   };
 }

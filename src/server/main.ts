@@ -17,6 +17,7 @@ const clientDir = fileURLToPath(new URL("../../dist/client", import.meta.url));
 const app = createApp({
   store: createStore(db, () => new Date()),
   allowedLogin,
+  links: config.links,
   clientDir: process.env["ALMANAC_API_ONLY"] === "1" ? null : clientDir,
 });
 
