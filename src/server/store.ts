@@ -35,7 +35,7 @@ const presetRow = z.object({
 // TypeScript can't relate a schema looked up by a generic tool id to that tool's type, so these
 // assert what the lookup guarantees.
 function parseState<T extends ToolId>(tool: T, json: string): ToolState<T> {
-  return toolSchemas[tool].state.parse(JSON.parse(json)) as ToolState<T>;
+  return toolSchemas[tool].storedState.parse(JSON.parse(json)) as ToolState<T>;
 }
 
 function parsePreset<T extends ToolId>(tool: T, json: string): PresetState<T> {

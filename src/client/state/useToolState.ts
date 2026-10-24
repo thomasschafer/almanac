@@ -18,7 +18,7 @@ export type SyncStatus =
   | { kind: "unsaved"; message: string };
 
 function cacheSchema(tool: ToolId) {
-  return z.object({ state: toolSchemas[tool].state, dirty: z.boolean() });
+  return z.object({ state: toolSchemas[tool].storedState, dirty: z.boolean() });
 }
 
 function cacheKey(tool: ToolId): string {

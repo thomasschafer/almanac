@@ -9,10 +9,16 @@ export const whatIf = z.strictObject({
 });
 export type WhatIf = z.infer<typeof whatIf>;
 
-/** The take-home tool's saved state. Presets only hold inputs. */
-export const takeHomeState = z.union([
-  z.strictObject({ inputs: takeHomeInputs, whatIf: whatIf.nullable() }),
-  // State saved before what-if scenarios existed was just the inputs.
-  takeHomeInputs.transform((inputs) => ({ inputs, whatIf: null })),
-]);
+/** The take-home tool's state, in the shape it's written. Presets only hold inputs. */
+export const takeHomeState = z.strictObject({ inputs: takeHomeInputs, whatIf: whatIf.nullable() });
 export type TakeHomeState = z.infer<typeof takeHomeState>;
+
+/**
+ * State as it may have been stored or cached, read as the current shape. Only reading accepts
+ * older shapes: a client still writing one would otherwise drop what newer clients save.
+ */
+export const storedTakeHomeState = z.union([
+  takeHomeState,
+  // State saved before what-if scenarios existed was just the inputs.
+  takeHomeInputs.transform((inputs): TakeHomeState => ({ inputs, whatIf: null })),
+]);

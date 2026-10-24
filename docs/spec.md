@@ -26,7 +26,10 @@ Presets are named copies of a tool's state that can be loaded, updated, renamed 
 Loading a preset replaces the current state.
 
 State and presets are validated against the tool's schema in `src/shared` on the way in and out.
-Changing a schema means handling state saved under the old one, never silently dropping it.
+Changing a schema means handling state saved under the old one, never silently dropping it. Old
+shapes are only accepted when reading stored state and each device's cached copy: the server
+refuses to save anything but the current shape, so an out-of-date client can't overwrite newer
+data. Its edits stay on the device, marked unsaved, until it updates.
 
 ## Take-home pay
 

@@ -32,7 +32,7 @@ async function request<S extends z.ZodType>(
 }
 
 function savedSchema(tool: ToolId) {
-  return z.object({ state: toolSchemas[tool].state, updatedAt: z.string() });
+  return z.object({ state: toolSchemas[tool].storedState, updatedAt: z.string() });
 }
 
 function presetSchema(tool: ToolId) {

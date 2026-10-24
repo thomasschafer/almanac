@@ -68,6 +68,18 @@ describe("tool state", () => {
     });
   });
 
+  it("refuses state in the shape from before what-if scenarios, so it can't drop one", async () => {
+    const { app } = testApp();
+    await app.request("/api/tools/take-home/state", jsonRequest("PUT", { state }));
+    const res = await app.request(
+      "/api/tools/take-home/state",
+      jsonRequest("PUT", { state: inputs }),
+    );
+    expect(res.status).toBe(400);
+    const got = await app.request("/api/tools/take-home/state");
+    expect(await got.json()).toMatchObject({ saved: { state } });
+  });
+
   it("404s for an unknown tool", async () => {
     const { app } = testApp();
     expect((await app.request("/api/tools/nope/state")).status).toBe(404);

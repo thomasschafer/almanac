@@ -43,4 +43,30 @@ createRoot(root).render(
   </StrictMode>,
 );
 
-registerSW({ immediate: true });
+const UPDATE_CHECK_MS = 60 * 60 * 1000;
+
+// The service worker only looks for a new version when the app loads, and an app on a phone's
+// home screen can stay open for days, so it also checks when the app comes back to the front and
+// every so often while it's open. A new version reloads the app; unsaved edits are kept on the
+// device and saved after it reloads.
+registerSW({
+  immediate: true,
+  onRegisteredSW(url, registration) {
+    if (registration === undefined) {
+      throw new Error(`no service worker registration for ${url}`);
+    }
+    const check = () => {
+      if (!navigator.onLine) return;
+      registration.update().catch((error: unknown) => {
+        console.error("couldn't check for a new version", error);
+      });
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") check();
+    });
+    setInterval(check, UPDATE_CHECK_MS);
+  },
+  onRegisterError(error: unknown) {
+    console.error("couldn't register the service worker", error);
+  },
+});

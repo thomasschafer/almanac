@@ -12,8 +12,8 @@ which is what to open on a phone and add to the home screen.
 
 To ship changes, push them to `main`, then run `deploy almanac`. It builds `main` in a fresh copy
 and only restarts the agent if the build succeeds. `deploy almanac <ref>` deploys another commit,
-such as an older one to roll back. Phones pick up the new version the next time the app is
-opened.
+such as an older one to roll back. Open apps pick up the new version when they're next opened or
+brought back to the front, and at least hourly while they're open.
 
 Without dotfiles, install Node 26, run `npm ci && npm run build && npm start`, and serve it with
 `tailscale serve --bg --https=443 http://127.0.0.1:8790`.
