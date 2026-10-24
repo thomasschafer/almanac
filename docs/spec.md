@@ -79,7 +79,8 @@ by 12:
   deduction jumps.
 - Salary sacrifice reduces the pay that tax, NI and student loans are worked out on. Net pay
   reduces taxable pay only. Relief at source is paid from net pay, with basic-rate relief added
-  by the provider and higher-rate relief claimed separately (shown, not paid through payroll).
+  by the provider. Any relief above the basic rate isn't paid through payroll: it's claimed
+  through Self Assessment or from HMRC, and the summary and breakdown show how much there is.
 - A student loan whose repayments start in a later tax year (its first repayment year is after
   the tax year's start) has nothing taken that year, and the results say so.
 - Amounts are whole pence and rounded as HMRC payroll does (student loan deductions round down

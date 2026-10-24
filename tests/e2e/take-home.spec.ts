@@ -448,3 +448,28 @@ test("pay rises can be negative, for a projection where pay falls", async ({ pag
   await pension.fill("-5");
   await expect(pension).toHaveAttribute("aria-invalid", "true");
 });
+
+test("relief at source shows the extra relief to claim outside payroll", async ({ page }) => {
+  // £4,000 gross a year on £60,000 sits wholly in the higher-rate band, so another 20% (£800)
+  // is claimed on top of the provider's basic-rate top-up.
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(6_000_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    pension: {
+      ...exampleInputs.pension,
+      method: "relief-at-source",
+      fromSalary: { kind: "annual", amount: asPence(400_000) },
+    },
+    studentLoans: [],
+  });
+  await page.goto("/take-home");
+  await expect(page.locator(".summary")).toContainText("Extra tax relief to claim a year£800");
+  const breakdown = page.locator("section").filter({ has: page.locator("#breakdown-heading") });
+  await expect(breakdown).toContainText(
+    "You can claim another £800 a year of tax relief, which isn't paid through payroll",
+  );
+
+  await page.getByLabel("Pension type").selectOption("net-pay");
+  await expect(page.locator(".summary")).not.toContainText("Extra tax relief");
+});

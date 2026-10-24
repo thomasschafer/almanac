@@ -17,6 +17,12 @@ export function pensionFromPay(pay: PayBreakdown): number {
   return pay.grossPay - pay.netPay - pay.incomeTax - pay.nationalInsurance - pay.studentLoanTotal;
 }
 
+/** Relief at source beyond the provider's basic-rate top-up, when there's any to claim. */
+function reliefToClaim(result: TakeHomeCalculation): Pence | null {
+  const claimable = result.reliefAtSourceClaimable;
+  return claimable !== null && claimable > 0 ? claimable : null;
+}
+
 function Pounds({ amount, className }: { amount: Pence | number; className?: string }) {
   const [pounds, pence] = gbpExact(amount).split(".");
   return (
@@ -37,6 +43,7 @@ export function Summary({
 }) {
   const { normalMonth, bonusMonth, annual, nonBonusNetPayRange: range } = result;
   const varies = range.max - range.min >= 100;
+  const claimable = reliefToClaim(result);
   return (
     <section className="panel summary" aria-label="Take-home pay">
       <div className="summary-main">
@@ -75,6 +82,12 @@ export function Summary({
           <dt>Into your pension a year</dt>
           <dd className="num">{gbp(annual.pension.total)}</dd>
         </div>
+        {claimable !== null && (
+          <div>
+            <dt>Extra tax relief to claim a year</dt>
+            <dd className="num">{gbp(claimable)}</dd>
+          </div>
+        )}
       </dl>
     </section>
   );
@@ -144,6 +157,7 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
   const shareOfGross = (amount: number) =>
     pay.grossPay > 0 ? percent((amount / pay.grossPay) * 100) : "—";
   const employerSide = pay.pension.total - pensionFromPay(pay);
+  const claimable = reliefToClaim(result);
 
   return (
     <section className="panel" aria-labelledby="breakdown-heading">
@@ -229,6 +243,14 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
                 : "Your employer adds"}{" "}
               <span className="num">{gbp(employerSide)}</span>, so{" "}
               <span className="num">{gbp(pay.pension.total)}</span> goes into your pension.
+            </p>
+          )}
+          {claimable !== null && (
+            <p className="panel-note">
+              Your provider only adds basic-rate relief. You can claim another{" "}
+              <span className="num">{gbp(claimable)}</span> a year of tax relief, which isn't paid
+              through payroll: claim it on a Self Assessment tax return, or from HMRC if you don't
+              file one.
             </p>
           )}
         </>
