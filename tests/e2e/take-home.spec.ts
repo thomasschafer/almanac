@@ -1,11 +1,17 @@
 import { expect, type Page, test } from "@playwright/test";
+import { asPence } from "../../src/shared/money.ts";
+import type { TakeHomeInputs } from "../../src/shared/take-home/inputs.ts";
 import { exampleInputs } from "./fixtures.ts";
 
-async function resetState(page: Page) {
+async function saveInputs(page: Page, inputs: TakeHomeInputs) {
   const state = await page.request.put("/api/tools/take-home/state", {
-    data: { state: { inputs: exampleInputs, whatIf: null } },
+    data: { state: { inputs, whatIf: null } },
   });
   expect(state.ok()).toBe(true);
+}
+
+async function resetState(page: Page) {
+  await saveInputs(page, exampleInputs);
   const presets = await page.request.get("/api/tools/take-home/presets");
   const { presets: list } = (await presets.json()) as { presets: { id: string }[] };
   for (const preset of list) {
@@ -162,4 +168,35 @@ test("the student loan breakdown shows each year and month", async ({ page }) =>
   await expect(page.locator(".loan-months tbody tr").first()).toContainText("Oct 2026");
   await page.getByRole("link", { name: "Take-home pay" }).click();
   await expect(hero(page)).toContainText("£4,747");
+});
+
+test("a loan with an unknown end says what period its totals cover", async ({ page }) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(3_000_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    studentLoans: [{ plan: "plan2", balance: asPence(6_000_000), firstRepaymentYear: null }],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator(".loan-panel");
+  await expect(panel).toContainText("isn't repaid within the projection");
+  await expect(panel.locator(".loan-totals")).toContainText("Repaid to 5 Apr 2086");
+  await expect(panel.locator(".loan-totals")).toContainText("Interest added to 5 Apr 2086");
+  await expect(panel.locator(".end-dot")).toHaveCount(0);
+});
+
+test("says when repayments start, and when a loan is already repaid", async ({ page }) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    studentLoans: [
+      { plan: "plan1", balance: asPence(0), firstRepaymentYear: 2012 },
+      { plan: "plan2", balance: asPence(2_500_000), firstRepaymentYear: 2028 },
+    ],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator(".loan-panel");
+  await expect(panel).toContainText("Plan 1 is already repaid");
+  await expect(panel).toContainText("Repayments start in April 2028.");
+  await expect(page.getByText("Student loan repayments haven't started yet")).toBeVisible();
+  await expect(page.getByText(/Plan 2 repayments start on 6 April 2028/)).toBeVisible();
 });

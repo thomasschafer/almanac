@@ -160,7 +160,10 @@ function LoanDetail({
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const years = byTaxYear(loan.months);
   const first = loan.months[0];
-  const months = loan.months.length;
+  const repaymentsStart = loan.repaymentsStart;
+  const months = loan.months.filter(
+    (month) => repaymentsStart === null || month.date >= repaymentsStart,
+  ).length;
 
   return (
     <section className="panel" aria-labelledby="detail-heading">

@@ -229,6 +229,7 @@ export function BalanceChart({
                   />
                   <EndMarker
                     loan={loan}
+                    lastBalance={last.balance}
                     cx={x(time(last.date))}
                     cy={y(last.balance)}
                     color={color}
@@ -327,19 +328,33 @@ export function LoanChart({
   );
 }
 
+/**
+ * What's repaid and added in interest across the loans. When a loan's end isn't known within the
+ * projection, the totals only cover the projection, so they say when that ends.
+ */
 export function LoanTotals({
   projection,
 }: {
   projection: Extract<StudentLoanProjection, { status: "ok" }>;
 }) {
+  const open = projection.loans.some(
+    ({ outcome }) =>
+      outcome.kind === "outstanding" ||
+      (outcome.kind === "unknown" && outcome.missing === "first-repayment-year"),
+  );
+  const lastMonth = projection.loans
+    .flatMap((loan) => loan.months.map((month) => month.date))
+    .sort()
+    .at(-1);
+  const until = open && lastMonth !== undefined ? ` to ${formatDay(lastMonth)}` : "";
   return (
     <dl className="loan-totals">
       <div>
-        <dt>Total repaid</dt>
+        <dt>{until === "" ? "Total repaid" : `Repaid${until}`}</dt>
         <dd className="num">{gbp(projection.totalRepaid)}</dd>
       </div>
       <div>
-        <dt>Interest added</dt>
+        <dt>Interest added{until}</dt>
         <dd className="num">{gbp(projection.totalInterest)}</dd>
       </div>
     </dl>
@@ -359,13 +374,16 @@ export function Assumptions({ assumptions }: { assumptions: readonly string[] })
   );
 }
 
+/** A cross where a loan is written off, and a dot where its balance reaches 0. */
 function EndMarker({
   loan,
+  lastBalance,
   cx,
   cy,
   color,
 }: {
   loan: LoanProjection;
+  lastBalance: number;
   cx: number;
   cy: number;
   color: string;
@@ -378,7 +396,7 @@ function EndMarker({
       </g>
     );
   }
-  if (loan.outcome.kind === "repaid" || (loan.outcome.kind === "unknown" && cy > 0)) {
+  if (lastBalance === 0) {
     return <circle className="end-dot" cx={cx} cy={cy} r={5} style={{ fill: color }} />;
   }
   return null;
