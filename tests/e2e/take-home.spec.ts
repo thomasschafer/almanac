@@ -344,3 +344,29 @@ test("the allowance taper callout gives the Scottish rate", async ({ page }) => 
   await expect(callout).toContainText("Another £10,000 a year into your pension");
   await expect(callout).toContainText("(£8,000 from your pay, with basic-rate relief added)");
 });
+
+test("charts every student loan plan at once, each in its own colour", async ({ page }) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    studentLoans: [
+      { plan: "plan5", balance: asPence(2_700_000), firstRepaymentYear: 2027 },
+      { plan: "plan1", balance: asPence(800_000), firstRepaymentYear: 2010 },
+      { plan: "postgraduate", balance: asPence(1_100_000), firstRepaymentYear: 2021 },
+      { plan: "plan2", balance: asPence(3_100_000), firstRepaymentYear: 2019 },
+      { plan: "plan4", balance: asPence(1_300_000), firstRepaymentYear: 2016 },
+    ],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator(".loan-panel");
+  const lines = panel.locator(".chart-line");
+  await expect(lines).toHaveCount(5);
+  const strokes = await lines.evaluateAll((elements) =>
+    elements.map((element) => (element as unknown as { style: { stroke: string } }).style.stroke),
+  );
+  // Colours follow the plan, from Plan 1 to Postgraduate, not the order the loans are in.
+  expect(strokes).toEqual([4, 1, 5, 2, 3].map((n) => `var(--series-${String(n)})`));
+  await expect(panel.locator(".chart-legend")).toContainText("Postgraduate");
+
+  await page.getByRole("link", { name: "Breakdown" }).click();
+  await expect(page.locator(".loans-page .chart-line")).toHaveCount(5);
+});

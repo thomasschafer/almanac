@@ -42,7 +42,9 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
 
 Charts follow the dataviz guidance: thin marks, recessive gridlines, one axis, categorical colours
 in their fixed order (`--series-1` onwards), values in text colours rather than series colours,
-and a readout that's reachable by dragging rather than precise hovering.
+and a readout that's reachable by dragging rather than precise hovering. A series that stands for
+something with a fixed set of values keeps one colour for each: each student loan plan has its
+own, from `--series-1` (Plan 1) to `--series-5` (Postgraduate), whichever loans are shown with it.
 
 ## Reviewing changes visually
 

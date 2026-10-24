@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
+import type { StudentLoanPlan } from "../../../shared/take-home/inputs.ts";
 import type {
   LoanOutcome,
   LoanProjection,
@@ -8,13 +9,14 @@ import type {
 } from "../../../shared/take-home/result.ts";
 import { formatDay, formatMonthYear, gbp, taxYearLabel } from "./format.ts";
 
-const seriesColors = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
-
-export function seriesColor(index: number): string {
-  const color = seriesColors[index];
-  if (color === undefined) throw new Error("more student loans than chart colours");
-  return color;
-}
+/** Each plan keeps its colour wherever it's charted, whichever other loans are shown with it. */
+const planColors: Readonly<Record<StudentLoanPlan, string>> = {
+  plan1: "var(--series-1)",
+  plan2: "var(--series-2)",
+  plan4: "var(--series-3)",
+  plan5: "var(--series-4)",
+  postgraduate: "var(--series-5)",
+};
 
 function time(date: string): number {
   return new Date(`${date}T12:00:00Z`).getTime();
@@ -157,10 +159,10 @@ export function BalanceChart({
         ) : (
           <>
             <span className="muted">{formatDay(readout[0]?.date ?? start)}</span>
-            {readout.map((r, index) => (
+            {readout.map((r) => (
               <span key={r.loan.plan}>
                 {loans.length > 1 && (
-                  <span className="swatch" style={{ background: seriesColor(index) }} />
+                  <span className="swatch" style={{ background: planColors[r.loan.plan] }} />
                 )}
                 {loans.length > 1 ? `${r.loan.name} ` : ""}
                 <span className="num">{gbp(r.balance)}</span>
@@ -205,14 +207,14 @@ export function BalanceChart({
                 </text>
               );
             })}
-            {loans.map((loan, index) => {
+            {loans.map((loan) => {
               const points = loan.points.map(
                 (p) => `${String(x(time(p.date)))},${String(y(p.balance))}`,
               );
               const first = loan.points[0];
               const last = loan.points.at(-1);
               if (first === undefined || last === undefined) return null;
-              const color = seriesColor(index);
+              const color = planColors[loan.plan];
               return (
                 <g key={loan.plan}>
                   {loans.length === 1 && (
@@ -251,9 +253,9 @@ export function BalanceChart({
       </div>
       {loans.length > 1 && (
         <div className="chart-legend">
-          {loans.map((loan, index) => (
+          {loans.map((loan) => (
             <span key={loan.plan}>
-              <span className="swatch" style={{ background: seriesColor(index) }} />
+              <span className="swatch" style={{ background: planColors[loan.plan] }} />
               {loan.name}
             </span>
           ))}
