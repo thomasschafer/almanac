@@ -83,6 +83,14 @@ export type PayYear =
     }
   | { readonly ok: false; readonly issues: readonly InputIssue[] };
 
+/**
+ * What a relief at source contribution of `gross` costs from net pay: the provider adds the rest
+ * as basic-rate relief.
+ */
+export function reliefAtSourcePaidFromPay(gross: Pence, reliefAtSourceRate: Rate): Pence {
+  return rateOfNearest(gross, (wholeRate - reliefAtSourceRate) as Rate);
+}
+
 /** Splits a year's pay and pension contributions into months, as payroll would. */
 export function payYear(inputs: PayInputs, rules: PayRules): PayYear {
   const { pension } = inputs;
@@ -132,7 +140,7 @@ export function payYear(inputs: PayInputs, rules: PayRules): PayYear {
     const netPayContribution = pension.method === "net-pay" ? employeeContribution : asPence(0);
     const reliefAtSourcePaid =
       pension.method === "relief-at-source"
-        ? rateOfNearest(employeeContribution, (wholeRate - rules.reliefAtSourceRate) as Rate)
+        ? reliefAtSourcePaidFromPay(employeeContribution, rules.reliefAtSourceRate)
         : asPence(0);
     const reliefAtSourceTopUp =
       pension.method === "relief-at-source"

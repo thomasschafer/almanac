@@ -314,20 +314,32 @@ function flagInsight(
   result: TakeHomeCalculation,
 ): { key: string; severity: "info" | "warning"; title: string; body: React.ReactNode } {
   switch (flag.kind) {
-    case "sixty-percent-band":
+    case "allowance-taper": {
+      const extra = flag.extraPensionToExit;
       return {
         key: flag.kind,
         severity: "warning",
-        title: "You're in the 60% band",
+        title: "Your tax-free allowance is being withdrawn",
         body: (
           <>
-            Between £100,000 and £125,140, your tax-free allowance shrinks as you earn more, so this
-            pay is taxed at an effective 60%. Another{" "}
-            <span className="num">{gbp(flag.extraPensionToExit)}</span> a year into your pension
-            would bring your adjusted net income down to £100,000.
+            Between <span className="num">{gbp(flag.band.from)}</span> and{" "}
+            <span className="num">{gbp(flag.band.to)}</span> of adjusted net income, your tax-free
+            allowance shrinks as you earn more, so this pay is taxed at an effective{" "}
+            <span className="num">{percent(flag.effectiveRatePercent, 1)}</span>. Another{" "}
+            <span className="num">{gbp(extra.gross)}</span> a year into your pension
+            {extra.method === "relief-at-source" && (
+              <>
+                {" "}
+                (<span className="num">{gbp(extra.paidFromNetPay)}</span> from your pay, with
+                basic-rate relief added)
+              </>
+            )}{" "}
+            would bring your adjusted net income down to{" "}
+            <span className="num">{gbp(flag.band.from)}</span>.
           </>
         ),
       };
+    }
     case "annual-allowance-exceeded":
       return {
         key: flag.kind,

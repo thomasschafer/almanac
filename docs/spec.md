@@ -76,8 +76,10 @@ by 12:
 Results show a normal month, the bonus month, and the year, with the breakdown of where the
 money goes. They also flag:
 
-- the effective 60% rate between £100,000 and £125,140 of adjusted net income, and how much
-  more pension contribution would get you out of it;
+- where the personal allowance is being withdrawn (between £100,000 and £125,140 of adjusted net
+  income in 2026/27), the effective rate that leaves (60%, or 67.5% on Scottish rates), and how
+  much more pension contribution would get you out of it, with what that costs from pay for
+  relief at source;
 - pension contributions (yours and your employer's) above the annual allowance, which may mean
   an annual allowance charge unless there's carry-forward;
 - figures that are provisional because the rules for that year aren't confirmed.

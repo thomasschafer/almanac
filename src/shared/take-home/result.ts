@@ -140,13 +140,35 @@ export interface ProvisionalFigure {
   readonly source: string;
 }
 
+/**
+ * An extra pension contribution: the gross amount going in, and for relief at source, the part
+ * of it that comes from net pay (the provider adds the rest).
+ */
+export type ExtraPension =
+  | {
+      readonly method: Extract<PensionMethod, "salary-sacrifice" | "net-pay">;
+      readonly gross: Pence;
+    }
+  | {
+      readonly method: Extract<PensionMethod, "relief-at-source">;
+      readonly gross: Pence;
+      readonly paidFromNetPay: Pence;
+    };
+
 export type TakeHomeFlag =
   /** Adjusted net income is where the personal allowance is being withdrawn. */
   | {
-      readonly kind: "sixty-percent-band";
+      readonly kind: "allowance-taper";
       readonly adjustedNetIncome: Pence;
-      /** The extra gross pension contribution that brings adjusted net income to the threshold. */
-      readonly extraPensionToExit: Pence;
+      /** Adjusted net income where the allowance starts to be withdrawn, and where it's all gone. */
+      readonly band: { readonly from: Pence; readonly to: Pence };
+      /**
+       * Income tax on the next £1 of adjusted net income, as a percentage: the band's rate on the
+       * £1 itself and on the allowance it withdraws.
+       */
+      readonly effectiveRatePercent: number;
+      /** The extra pension contribution that brings adjusted net income down to the threshold. */
+      readonly extraPensionToExit: ExtraPension;
     }
   | {
       readonly kind: "annual-allowance-exceeded";

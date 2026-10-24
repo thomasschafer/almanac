@@ -1,10 +1,18 @@
 import { asPence, type Pence } from "../money.ts";
-import { itemAt, minus, percentOf, positivePart, rateOfDown, sum } from "./arithmetic.ts";
+import {
+  itemAt,
+  minus,
+  percentOf,
+  positivePart,
+  rateOfDown,
+  sum,
+  wholeRate,
+} from "./arithmetic.ts";
 import type { StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
 import { marginalRates, type MarginalContext } from "./marginal.ts";
 import { employeeNi, employerNi, type NiRates } from "./ni.ts";
-import { payYear, type MonthPay } from "./pay.ts";
-import { annualTax, payeYear } from "./paye.ts";
+import { payYear, reliefAtSourcePaidFromPay, type MonthPay } from "./pay.ts";
+import { annualMarginalRate, annualTax, payeYear } from "./paye.ts";
 import type {
   AnnualAllowanceCheck,
   EffectiveRates,
@@ -17,7 +25,13 @@ import type {
   TakeHomeResult,
   TaxCodeUsed,
 } from "./result.ts";
-import type { Sourced, TaxRegime, TaxYearRules } from "./rules/types.ts";
+import {
+  ratePercent,
+  type Rate,
+  type Sourced,
+  type TaxRegime,
+  type TaxYearRules,
+} from "./rules/types.ts";
 import { studentLoanRepayments, type StudentLoanRules } from "./student-loan-repayments.ts";
 import { deriveTaxCode, parseTaxCode } from "./tax-code.ts";
 
@@ -413,10 +427,32 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
 
   const flags: TakeHomeFlag[] = [];
   if (inTaper) {
+    if (taperRate <= 0) {
+      throw new Error("the allowance can't be tapered at a rate of 0");
+    }
+    const regionBands = bandsFor(regionRegime);
+    const taxableIncome = positivePart(minus(annual.taxablePay, allowanceAfterTaper));
+    const bandRate = annualMarginalRate(taxableIncome, regionBands, reliefAtSourceGross);
+    const extraGross = minus(adjustedNetIncome, taperThreshold);
     flags.push({
-      kind: "sixty-percent-band",
+      kind: "allowance-taper",
       adjustedNetIncome,
-      extraPensionToExit: minus(adjustedNetIncome, taperThreshold),
+      band: {
+        from: taperThreshold,
+        to: asPence(taperThreshold + Math.ceil((fullAllowance * wholeRate) / taperRate)),
+      },
+      effectiveRatePercent: ratePercent(((bandRate * (wholeRate + taperRate)) / wholeRate) as Rate),
+      extraPensionToExit:
+        pension.method === "relief-at-source"
+          ? {
+              method: pension.method,
+              gross: extraGross,
+              paidFromNetPay: reliefAtSourcePaidFromPay(
+                extraGross,
+                rules.pensions.reliefAtSourceRate.value,
+              ),
+            }
+          : { method: pension.method, gross: extraGross },
     });
   }
   if (annualAllowance.excess > 0) {

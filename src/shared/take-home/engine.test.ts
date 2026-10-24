@@ -89,11 +89,40 @@ describe("the personal allowance taper", () => {
     expect(result.taxCode).toMatchObject({ display: "757T", allowance: "tapered" });
   });
 
-  it("flags the 60% band with the pension needed to leave it", () => {
-    expect(flag(result, "sixty-percent-band")).toEqual({
-      kind: "sixty-percent-band",
+  it("flags the taper at an effective 60%, with the pension needed to leave it", () => {
+    expect(flag(result, "allowance-taper")).toEqual({
+      kind: "allowance-taper",
       adjustedNetIncome: pounds(110_000),
-      extraPensionToExit: pounds(10_000),
+      band: { from: pounds(100_000), to: pounds(125_140) },
+      effectiveRatePercent: 60,
+      extraPensionToExit: { method: "salary-sacrifice", gross: pounds(10_000) },
+    });
+  });
+
+  it("puts a Scottish taxpayer in the taper at an effective 67.5%", () => {
+    const scottish = calculate({ region: "scotland", salary: 110_000 });
+    expect(flag(scottish, "allowance-taper")).toMatchObject({
+      band: { from: pounds(100_000), to: pounds(125_140) },
+      effectiveRatePercent: 67.5,
+    });
+  });
+
+  it("says what a relief at source contribution to leave the taper costs from pay", () => {
+    // £112,000 with £5,000 gross relief at source leaves adjusted net income at £107,000, and the
+    // basic rate band widened by £5,000 still leaves the next £1 in the higher rate band.
+    const reliefAtSource = calculate({
+      salary: 112_000,
+      method: "relief-at-source",
+      fromSalary: { annual: 5_000 },
+    });
+    expect(flag(reliefAtSource, "allowance-taper")).toMatchObject({
+      adjustedNetIncome: pounds(107_000),
+      effectiveRatePercent: 60,
+      extraPensionToExit: {
+        method: "relief-at-source",
+        gross: pounds(7_000),
+        paidFromNetPay: pounds(5_600),
+      },
     });
   });
 
@@ -107,13 +136,13 @@ describe("the personal allowance taper", () => {
     const above = calculate({ salary: 125_140 });
     expect(above.personalAllowance.afterTaper).toBe(0);
     expect(above.taxCode).toMatchObject({ display: "0T", allowance: "none" });
-    expect(flag(above, "sixty-percent-band")).toBeUndefined();
+    expect(flag(above, "allowance-taper")).toBeUndefined();
   });
 
   it("doesn't touch the allowance at exactly £100,000", () => {
     const at = calculate({ salary: 100_000 });
     expect(at.taxCode.display).toBe("1257L");
-    expect(flag(at, "sixty-percent-band")).toBeUndefined();
+    expect(flag(at, "allowance-taper")).toBeUndefined();
   });
 
   it("leaves an override code alone and taxes by it", () => {
@@ -533,7 +562,7 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
   it("loses the whole allowance", () => {
     expect(result.adjustedNetIncome).toBe(pounds(140_000));
     expect(result.taxCode).toMatchObject({ display: "0T", allowance: "none" });
-    expect(flag(result, "sixty-percent-band")).toBeUndefined();
+    expect(flag(result, "allowance-taper")).toBeUndefined();
   });
 
   it("has a normal month worked out by hand", () => {
@@ -594,7 +623,10 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
     const sacrificingBonus = calculate({ ...options, fromBonus: { percent: 50 } });
     expect(sacrificingBonus.adjustedNetIncome).toBe(pounds(120_000));
     expect(sacrificingBonus.taxCode.display).toBe("257T");
-    expect(flag(sacrificingBonus, "sixty-percent-band")?.extraPensionToExit).toBe(pounds(20_000));
+    expect(flag(sacrificingBonus, "allowance-taper")?.extraPensionToExit).toEqual({
+      method: "salary-sacrifice",
+      gross: pounds(20_000),
+    });
     // Half of the next £1 of bonus is sacrificed; the other half is taxed at 40% and withdraws
     // 25p of allowance, which is taxed at 40% too.
     expect(sacrificingBonus.marginalRates.bonus).toMatchObject({

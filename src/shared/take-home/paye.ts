@@ -209,17 +209,43 @@ export function annualTax(
   if (taxableIncome <= 0) {
     return asPence(0);
   }
-  const ordered = inOrder(bands);
   let remaining: number = taxableIncome;
   const parts: Pence[] = [];
-  for (const band of ordered) {
-    const width = band === bands.basic ? band.width + basicBandExtension : band.width;
-    const inBand = Math.min(remaining, width);
+  for (const band of annualBands(bands, basicBandExtension)) {
+    const inBand = Math.min(remaining, band.width);
     parts.push(rateOfDown(asPence(inBand), band.rate));
     remaining -= inBand;
   }
   parts.push(rateOfDown(asPence(remaining), bands.top.rate));
   return sum(parts);
+}
+
+/**
+ * The rate the next pound of a year's taxable income (after the allowance) is taxed at, with the
+ * basic rate band widened by `basicBandExtension` as in {@link annualTax}.
+ */
+export function annualMarginalRate(
+  taxableIncome: Pence,
+  bands: IncomeTaxBands,
+  basicBandExtension: Pence = asPence(0),
+): Rate {
+  if (taxableIncome < 0) {
+    return 0 as Rate;
+  }
+  let limit = 0;
+  for (const band of annualBands(bands, basicBandExtension)) {
+    limit += band.width;
+    if (taxableIncome < limit) {
+      return band.rate;
+    }
+  }
+  return bands.top.rate;
+}
+
+function annualBands(bands: IncomeTaxBands, basicBandExtension: Pence): BoundedBand[] {
+  return inOrder(bands).map((band) =>
+    band === bands.basic ? { ...band, width: asPence(band.width + basicBandExtension) } : band,
+  );
 }
 
 /** The rate the next pound of taxable income to date would be taxed at after `month` months. */
