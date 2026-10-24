@@ -66,6 +66,7 @@ The student loan projection runs past the last year in the registry. It takes th
 rules and uprates each repayment threshold by its plan's rule using the assumed RPI: Plan 1, 4
 and 5 rise with RPI, rounded up to £5; Plan 2 is frozen to 2029/30 and then assumed to rise with
 RPI; the Postgraduate Loan threshold is fixed. Interest follows each plan's rule with the assumed
-RPI, and the 6% cap on Plan 2 and Postgraduate Loan interest is assumed to continue. The
+RPI. The 6% cap on Plan 2 and Postgraduate Loan interest is only announced for the 2026/27
+academic year (to 31 August 2027); the projection assumes it continues after that. The
 projection lists these assumptions alongside its results, so update the wording there if a rule
 changes.

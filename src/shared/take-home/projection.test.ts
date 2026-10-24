@@ -95,7 +95,13 @@ describe("a high earner's Plan 2 loan", () => {
     expect(projection.assumptions.some((text) => text.includes("3% a year after 2026-27"))).toBe(
       true,
     );
-    expect(projection.assumptions.some((text) => text.includes("6% cap"))).toBe(true);
+    expect(
+      projection.assumptions.some(
+        (text) =>
+          text.includes("6% cap is announced for the 2026/27 academic year, to 31 August 2027") &&
+          text.includes("modelling assumption"),
+      ),
+    ).toBe(true);
     expect(projection.assumptions.some((text) => text.includes("April 2029"))).toBe(true);
   });
 });

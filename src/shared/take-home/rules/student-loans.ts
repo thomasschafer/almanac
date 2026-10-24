@@ -12,11 +12,14 @@ const writeOffPage =
 const interestPage = "https://www.gov.uk/repaying-your-student-loan/what-you-pay";
 const announcement2026 =
   "https://www.gov.uk/government/news/student-loans-interest-rates-and-repayment-threshold-announcement--7";
-const interestCap =
-  "https://www.gov.uk/government/news/interest-rate-cap-introduced-to-protect-plan-2-borrowers";
 const repaymentRegulations = "https://www.legislation.gov.uk/uksi/2022/1335/regulation/65/made";
 const budget2025 =
   "https://www.gov.uk/government/publications/budget-2025-document/budget-2025-html";
+
+/** Plan 2 and Postgraduate Loan interest is capped at 6%, announced for one academic year. */
+const capNote =
+  "The 6% cap is announced for the 2026/27 academic year, to 31 August 2027. Continuing it " +
+  "after then is a modelling assumption.";
 
 export type InterestRule =
   /** The lower of RPI and Bank Rate plus a margin. */
@@ -72,8 +75,8 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
     writeOffYears: confirmed(30, writeOffPage),
     interest: provisional(
       { kind: "income-linked", maxMargin: percent(3), cap: percent(6) },
-      interestCap,
-      "The 6% cap was introduced from September 2026 with no end date given; assumed to continue.",
+      announcement2026,
+      capNote,
     ),
     thresholdUprating: provisional(
       { kind: "frozen-then-rpi", frozenThroughStartYear: 2029, roundUpTo: roundUpToFivePounds },
@@ -115,8 +118,8 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
     writeOffYears: confirmed(30, writeOffPage),
     interest: provisional(
       { kind: "rpi-plus", margin: percent(3), cap: percent(6) },
-      interestCap,
-      "The 6% cap was introduced from September 2026 with no end date given; assumed to continue.",
+      announcement2026,
+      capNote,
     ),
     thresholdUprating: confirmed(
       { kind: "fixed" },
