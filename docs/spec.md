@@ -28,6 +28,7 @@ every page and tab on the device shares them, so opening the tool again, in anot
 coming back to the app, never replaces edits that aren't saved yet with an older copy. While
 any aren't, because a save failed or the tool was left before one finished, a notice says
 so from any page. It can't be dismissed, as those edits could be lost. Presets are named copies of a tool's state that can be loaded, updated, renamed and deleted.
+Renaming one only changes its name, so it keeps figures another device has updated it with.
 Loading a preset replaces the current state.
 
 State and presets are validated against the tool's schema in `src/shared` on the way in and out.

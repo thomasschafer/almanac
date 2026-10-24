@@ -7,6 +7,7 @@ import {
   deletePreset,
   listPresets,
   type Preset,
+  renamePreset,
   updatePreset,
 } from "../../api.ts";
 import { Sheet } from "../../ui/Sheet.tsx";
@@ -164,7 +165,7 @@ export function PresetsButton({
                         const trimmed = renaming.name.trim();
                         if (trimmed === "") return;
                         void run(async () => {
-                          await updatePreset("take-home", preset.id, trimmed, preset.state);
+                          await renamePreset("take-home", preset.id, trimmed);
                           setRenaming(null);
                         });
                       }}

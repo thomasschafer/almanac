@@ -58,6 +58,44 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 export function createStore(db: DatabaseSync, now: () => Date) {
+  /** Changes a preset's name, and its figures if given, failing if it's missing or the name taken. */
+  function changePreset(
+    tool: ToolId,
+    id: string,
+    change: { readonly name: string; readonly state?: string },
+  ): void {
+    const at = now().toISOString();
+    let changes: number | bigint;
+    try {
+      ({ changes } =
+        change.state === undefined
+          ? db
+              .prepare("update presets set name = ?, updated_at = ? where tool = ? and id = ?")
+              .run(change.name, at, tool, id)
+          : db
+              .prepare(
+                "update presets set name = ?, state = ?, updated_at = ? where tool = ? and id = ?",
+              )
+              .run(change.name, change.state, at, tool, id));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictError(`a preset called "${change.name}" exists`);
+      }
+      throw error;
+    }
+    if (Number(changes) === 0) throw new NotFoundError(`no preset ${id}`);
+  }
+
+  function getPreset<T extends ToolId>(tool: T, id: string): Preset<T> {
+    const row = db
+      .prepare(
+        "select id, name, state, created_at, updated_at from presets where tool = ? and id = ?",
+      )
+      .get(tool, id);
+    if (row === undefined) throw new NotFoundError(`no preset ${id}`);
+    return toPreset(tool, row);
+  }
+
   return {
     getState<T extends ToolId>(tool: T): SavedState<T> | null {
       const row = db.prepare("select state, updated_at from tool_state where tool = ?").get(tool);
@@ -104,23 +142,14 @@ export function createStore(db: DatabaseSync, now: () => Date) {
       name: string,
       state: PresetState<T>,
     ): Preset<T> {
-      const at = now().toISOString();
-      let changes: number | bigint;
-      try {
-        ({ changes } = db
-          .prepare(
-            "update presets set name = ?, state = ?, updated_at = ? where tool = ? and id = ?",
-          )
-          .run(name, JSON.stringify(state), at, tool, id));
-      } catch (error) {
-        if (isUniqueViolation(error)) throw new ConflictError(`a preset called "${name}" exists`);
-        throw error;
-      }
-      if (Number(changes) === 0) throw new NotFoundError(`no preset ${id}`);
-      const row = db
-        .prepare("select id, name, state, created_at, updated_at from presets where id = ?")
-        .get(id);
-      return toPreset(tool, row);
+      changePreset(tool, id, { name, state: JSON.stringify(state) });
+      return getPreset(tool, id);
+    },
+
+    /** Renames a preset, leaving its figures as they are, whatever they've been changed to. */
+    renamePreset<T extends ToolId>(tool: T, id: string, name: string): Preset<T> {
+      changePreset(tool, id, { name });
+      return getPreset(tool, id);
     },
 
     deletePreset(tool: ToolId, id: string): void {

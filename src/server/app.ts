@@ -154,6 +154,11 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ preset: store.updatePreset(tool, c.req.param("id"), name, state) });
   });
 
+  api.patch("/tools/:tool/presets/:id", async (c) => {
+    const { name } = await parseBody(c, z.strictObject({ name: presetName }));
+    return c.json({ preset: store.renamePreset(toolParam(c), c.req.param("id"), name) });
+  });
+
   api.delete("/tools/:tool/presets/:id", (c) => {
     store.deletePreset(toolParam(c), c.req.param("id"));
     return c.body(null, 204);

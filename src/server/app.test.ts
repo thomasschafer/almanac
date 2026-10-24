@@ -107,7 +107,7 @@ describe("presets", () => {
 
     const renamed = await app.request(
       `/api/tools/take-home/presets/${preset.id}`,
-      jsonRequest("PUT", { name: "Old job", state: inputs }),
+      jsonRequest("PATCH", { name: "Old job" }),
     );
     expect(renamed.status).toBe(200);
 
@@ -126,6 +126,46 @@ describe("presets", () => {
       jsonRequest("DELETE", undefined),
     );
     expect(again.status).toBe(404);
+  });
+
+  it("can be renamed without touching figures updated since", async () => {
+    const { app } = testApp();
+    const created = await app.request(
+      "/api/tools/take-home/presets",
+      jsonRequest("POST", { name: "Offer", state: inputs }),
+    );
+    const { preset } = (await created.json()) as { preset: { id: string } };
+    const path = `/api/tools/take-home/presets/${preset.id}`;
+    const updated = { ...inputs, salary: 5_500_000 };
+    expect(
+      (await app.request(path, jsonRequest("PUT", { name: "Offer", state: updated }))).status,
+    ).toBe(200);
+
+    const renamed = await app.request(path, jsonRequest("PATCH", { name: "Second offer" }));
+    expect(await renamed.json()).toMatchObject({
+      preset: { id: preset.id, name: "Second offer", state: updated },
+    });
+  });
+
+  it("refuses a rename that also sends figures, or a name that's taken or blank", async () => {
+    const { app } = testApp();
+    const create = (name: string) =>
+      app.request("/api/tools/take-home/presets", jsonRequest("POST", { name, state: inputs }));
+    const { preset } = (await (await create("Offer")).json()) as { preset: { id: string } };
+    await create("Current job");
+    const rename = (body: unknown) =>
+      app.request(`/api/tools/take-home/presets/${preset.id}`, jsonRequest("PATCH", body));
+    expect((await rename({ name: "Offer", state: inputs })).status).toBe(400);
+    expect((await rename({ name: " " })).status).toBe(400);
+    expect((await rename({ name: "Current job" })).status).toBe(409);
+    expect(
+      (
+        await app.request(
+          "/api/tools/take-home/presets/missing",
+          jsonRequest("PATCH", { name: "X" }),
+        )
+      ).status,
+    ).toBe(404);
   });
 
   it("refuses two presets with the same name", async () => {

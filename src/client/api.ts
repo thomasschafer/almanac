@@ -110,6 +110,20 @@ export async function updatePreset<T extends ToolId>(
   return body.preset as Preset<T>;
 }
 
+/** Renames a preset without touching its figures, which may have changed elsewhere. */
+export async function renamePreset<T extends ToolId>(
+  tool: T,
+  id: string,
+  name: string,
+): Promise<Preset<T>> {
+  const body = await request(
+    `/tools/${tool}/presets/${encodeURIComponent(id)}`,
+    z.object({ preset: presetSchema(tool) }),
+    { method: "PATCH", body: JSON.stringify({ name }) },
+  );
+  return body.preset as Preset<T>;
+}
+
 export async function deletePreset(tool: ToolId, id: string): Promise<void> {
   await request(`/tools/${tool}/presets/${encodeURIComponent(id)}`, z.undefined(), {
     method: "DELETE",

@@ -372,3 +372,31 @@ test("charts every student loan plan at once, each in its own colour", async ({ 
   await page.getByRole("link", { name: "Breakdown" }).click();
   await expect(page.locator(".loans-page .chart-line")).toHaveCount(5);
 });
+
+test("renaming a preset keeps figures another device saved to it", async ({ page }) => {
+  const created = await page.request.post("/api/tools/take-home/presets", {
+    data: { name: "Offer", state: exampleInputs },
+  });
+  const { preset } = (await created.json()) as { preset: { id: string } };
+  await page.goto("/take-home");
+  await page.getByRole("button", { name: "Presets" }).click();
+  await expect(page.locator(".preset-load").filter({ hasText: "Offer" })).toBeVisible();
+
+  // Another device updates the preset while this one still shows the old figures.
+  const updated = { ...exampleInputs, salary: asPence(6_300_000) };
+  const put = await page.request.put(`/api/tools/take-home/presets/${preset.id}`, {
+    data: { name: "Offer", state: updated },
+  });
+  expect(put.ok()).toBe(true);
+
+  await page.getByRole("button", { name: "Rename Offer" }).click();
+  await page.getByLabel("Preset name", { exact: true }).fill("Second offer");
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await expect(page.locator(".preset-load").filter({ hasText: "Second offer" })).toBeVisible();
+
+  const list = await page.request.get("/api/tools/take-home/presets");
+  const { presets } = (await list.json()) as {
+    presets: { name: string; state: TakeHomeInputs }[];
+  };
+  expect(presets.map((p) => [p.name, p.state.salary])).toEqual([["Second offer", 6_300_000]]);
+});
