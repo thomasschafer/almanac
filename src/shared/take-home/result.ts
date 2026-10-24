@@ -184,6 +184,14 @@ export type TakeHomeFlag =
       readonly codeRegime: TaxRegime;
       readonly region: TakeHomeInputs["region"];
     }
+  /** Loans whose repayments aren't due until a later tax year, so nothing is taken this year. */
+  | {
+      readonly kind: "student-loans-not-due";
+      readonly loans: readonly {
+        readonly plan: StudentLoanPlan;
+        readonly firstRepaymentYear: number;
+      }[];
+    }
   /** The K-code overriding limit stopped some tax being taken through payroll. */
   | { readonly kind: "tax-not-deducted"; readonly amount: Pence };
 
@@ -264,6 +272,8 @@ export interface LoanMonth {
 }
 
 export type LoanOutcome =
+  /** The balance is already 0. */
+  | { readonly kind: "already-repaid" }
   | { readonly kind: "repaid"; readonly date: string }
   | { readonly kind: "written-off"; readonly date: string; readonly balanceWrittenOff: Pence }
   /** No balance, so nothing can be projected. */
@@ -284,9 +294,14 @@ export interface LoanProjection {
   readonly plan: StudentLoanPlan;
   readonly name: string;
   readonly outcome: LoanOutcome;
-  /** Empty when the outcome is unknown for lack of a balance. */
+  /**
+   * The 6 April repayments start on (YYYY-MM-DD), when that's after the projection starts. Interest
+   * is still added until then.
+   */
+  readonly repaymentsStart: string | null;
+  /** Empty when there's no balance to chart: it's unknown, or already repaid. */
   readonly points: readonly LoanPoint[];
-  /** Every projected month, also empty without a balance. */
+  /** Every projected month, also empty without a balance to chart. */
   readonly months: readonly LoanMonth[];
   readonly totalRepaid: Pence;
   readonly totalInterest: Pence;

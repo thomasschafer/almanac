@@ -33,7 +33,11 @@ import {
   type StudentLoanYearRules,
   type TaxYearRules,
 } from "./rules/types.ts";
-import { studentLoanRepayments, type StudentLoanRules } from "./student-loan-repayments.ts";
+import {
+  repaymentsDue,
+  studentLoanRepayments,
+  type StudentLoanRules,
+} from "./student-loan-repayments.ts";
 
 /** How far ahead to look when a loan has no write-off date. */
 const horizonYears = 60;
@@ -250,7 +254,7 @@ function assumptionsFor(
     `Salary and bonus grow by ${String(salaryGrowthPercent)}% a year after ${inputs.taxYear}; pension contributions set as a fixed amount stay the same.`,
     `RPI is ${String(rpiPercent)}% a year. It sets interest after August ${lastInterest.to.slice(0, 4)} and repayment thresholds after ${latest.id}.`,
     "Interest is added each month at a twelfth of the yearly rate, before that month's repayment.",
-    "Repayments start with the pay month the projection starts in.",
+    "Repayments start with the pay month the projection starts in, or on 6 April of the year they're first due if that's later.",
   ];
   for (const plan of plans) {
     const rules = studentLoanPlanRules[plan];
@@ -292,11 +296,16 @@ interface LoanState {
   readonly plan: StudentLoanPlan;
   /** Null when unknown: the loan still takes its share of repayments but isn't tracked. */
   balance: Pence | null;
+  /** The tax year repayments are first due in, or null if unknown (taken as already due). */
+  readonly firstRepaymentYear: number | null;
   readonly writeOffStartYear: number | null;
-  /** Still having repayments taken. */
+  /** Still open: accruing interest, and having repayments taken once they're due. */
   repaying: boolean;
   end:
-    { kind: "repaid"; date: string } | { kind: "written-off"; date: string; balance: Pence } | null;
+    | { kind: "already-repaid" }
+    | { kind: "repaid"; date: string }
+    | { kind: "written-off"; date: string; balance: Pence }
+    | null;
   readonly points: LoanPoint[];
   readonly months: LoanMonth[];
   repaidSincePoint: number;
@@ -305,7 +314,8 @@ interface LoanState {
   totalInterest: number;
 }
 
-function writeOffDate(startYear: number): string {
+/** The first day of the tax year starting in `startYear`, when write-offs and repayments start. */
+function taxYearStartDate(startYear: number): string {
   return `${String(startYear)}-04-06`;
 }
 
@@ -329,6 +339,9 @@ function outcomeOf(state: LoanState, horizonEnd: string): LoanOutcome {
     return { kind: "unknown", missing: "balance" };
   }
   const { end } = state;
+  if (end?.kind === "already-repaid") {
+    return end;
+  }
   if (state.writeOffStartYear === null) {
     return {
       kind: "unknown",
@@ -377,6 +390,7 @@ export function projectStudentLoans(
     const state: LoanState = {
       plan: loan.plan,
       balance: loan.balance,
+      firstRepaymentYear: loan.firstRepaymentYear,
       writeOffStartYear,
       repaying: true,
       end: null,
@@ -387,15 +401,20 @@ export function projectStudentLoans(
       totalRepaid: 0,
       totalInterest: 0,
     };
+    if (state.balance === 0) {
+      state.repaying = false;
+      state.end = { kind: "already-repaid" };
+      return state;
+    }
     if (state.balance !== null) {
       addPoint(state, today, firstStartYear);
     }
-    if (writeOffStartYear !== null && writeOffDate(writeOffStartYear) <= today) {
+    if (writeOffStartYear !== null && taxYearStartDate(writeOffStartYear) <= today) {
       state.repaying = false;
       if (state.balance !== null) {
         state.end = {
           kind: "written-off",
-          date: writeOffDate(writeOffStartYear),
+          date: taxYearStartDate(writeOffStartYear),
           balance: state.balance,
         };
       }
@@ -411,10 +430,10 @@ export function projectStudentLoans(
         if (state.balance !== null) {
           state.end = {
             kind: "written-off",
-            date: writeOffDate(startYear),
+            date: taxYearStartDate(startYear),
             balance: state.balance,
           };
-          addPoint(state, writeOffDate(startYear), startYear);
+          addPoint(state, taxYearStartDate(startYear), startYear);
         }
       }
     }
@@ -447,9 +466,12 @@ export function projectStudentLoans(
     const firstMonth = startYear === firstStartYear ? taxMonthOf(today) : 1;
     for (let month = firstMonth; month <= 12; month++) {
       const repaying = states.filter((state) => state.repaying);
+      const collecting = repaying.filter((state) =>
+        repaymentsDue(state.firstRepaymentYear, startYear),
+      );
       const repayments = studentLoanRepayments(
         itemAt(pay.months, month - 1).niablePay,
-        repaying.map((state) => state.plan),
+        collecting.map((state) => state.plan),
         year.studentLoans,
       );
       for (const state of repaying) {
@@ -459,7 +481,9 @@ export function projectStudentLoans(
         const rate = interestRate(state.plan, monthStart(startYear, month), rpiPercent, plan2);
         const interest = Math.round((state.balance * rate) / 1_200);
         const due = state.balance + interest;
-        const deduction = repayments.find((repayment) => repayment.plan === state.plan)?.amount;
+        const deduction = collecting.includes(state)
+          ? repayments.find((repayment) => repayment.plan === state.plan)?.amount
+          : asPence(0);
         if (deduction === undefined) {
           throw new Error(`no repayment worked out for ${state.plan}`);
         }
@@ -496,6 +520,10 @@ export function projectStudentLoans(
     plan: state.plan,
     name: studentLoanPlanRules[state.plan].name,
     outcome: outcomeOf(state, horizonEnd),
+    repaymentsStart:
+      state.firstRepaymentYear !== null && state.firstRepaymentYear > firstStartYear
+        ? taxYearStartDate(state.firstRepaymentYear)
+        : null,
     points: state.points,
     months: state.months,
     totalRepaid: asPence(state.totalRepaid),

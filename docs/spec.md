@@ -42,8 +42,8 @@ it leaves the results in view.
 - Basics: salary, bonus, pension contribution from each (with the pension type picked beside
   it: salary sacrifice, net pay or relief at source), and student loan plans with their balances.
 - More options: tax year, Scotland, the bonus month, employer contribution and NI pass-on, the
-  year repayments started (for write-off), a tax code override, and the projection's
-  assumptions (salary growth, RPI).
+  year repayments started (for write-off, or for repayments that haven't started yet), a tax
+  code override, and the projection's assumptions (salary growth, RPI).
 
 ### What if
 
@@ -70,6 +70,8 @@ by 12:
 - Salary sacrifice reduces the pay that tax, NI and student loans are worked out on. Net pay
   reduces taxable pay only. Relief at source is paid from net pay, with basic-rate relief added
   by the provider and higher-rate relief claimed separately (shown, not paid through payroll).
+- A student loan whose repayments start in a later tax year (its first repayment year is after
+  the tax year's start) has nothing taken that year, and the results say so.
 - Amounts are whole pence and rounded as HMRC payroll does (student loan deductions round down
   to the pound).
 
@@ -88,7 +90,10 @@ money goes. They also flag:
 
 A chart of each loan's balance, year by year, from today's balance until it's repaid or written
 off, with salary growing at the assumed rate and interest following each plan's rules (Plan 2's
-income-linked rate included). It says which comes first, when, and the total you'd repay.
+income-linked rate included). It says which comes first, when, and the total you'd repay. A loan
+whose repayments haven't started yet adds interest until 6 April of its first repayment year, and
+only then has repayments taken; an unknown first repayment year is taken as already started. A
+balance of 0 is shown as already repaid.
 
 Its breakdown page (`/take-home/student-loans`) has a larger chart, what's repaid and added in
 interest each tax year, and a table by tax year that opens out into each month's pay, interest

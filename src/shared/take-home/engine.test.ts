@@ -638,3 +638,33 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
     });
   });
 });
+
+describe("a student loan that isn't due yet", () => {
+  const notDue = { plan: "plan2", balance: 30_000, firstRepaymentYear: 2027 } as const;
+
+  it("takes nothing for it before the tax year repayments start", () => {
+    const result = calculate({ salary: 45_000, loans: [notDue] });
+    expect(result.annual.studentLoanTotal).toBe(0);
+    expect(result.annual.studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
+    expect(result.marginalRates.salary.studentLoansPercent).toBe(0);
+    expect(flag(result, "student-loans-not-due")).toEqual({
+      kind: "student-loans-not-due",
+      loans: [{ plan: "plan2", firstRepaymentYear: 2027 }],
+    });
+  });
+
+  it("takes repayments from the tax year they're first due", () => {
+    const result = calculate({ taxYear: "2027-28", salary: 45_000, loans: [notDue] });
+    expect(result.annual.studentLoanTotal).toBeGreaterThan(0);
+    expect(flag(result, "student-loans-not-due")).toBeUndefined();
+  });
+
+  it("leaves another plan's repayments as they'd be on their own", () => {
+    const withPlan1 = calculate({
+      salary: 45_000,
+      loans: [notDue, { plan: "plan1", balance: null, firstRepaymentYear: 2015 }],
+    });
+    const alone = calculate({ salary: 45_000, loans: ["plan1"] });
+    expect(withPlan1.annual.studentLoanTotal).toBe(alone.annual.studentLoanTotal);
+  });
+});

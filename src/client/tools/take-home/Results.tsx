@@ -378,6 +378,23 @@ function flagInsight(
         title: "Your tax code doesn't match where you live",
         body: `The code is for ${flag.codeRegime === "scotland" ? "Scottish" : flag.codeRegime === "wales" ? "Welsh" : "English and Northern Irish"} rates, so the figures use those.`,
       };
+    case "student-loans-not-due":
+      return {
+        key: flag.kind,
+        severity: "info",
+        title: "Student loan repayments haven't started yet",
+        body: (
+          <ul className="plain-list">
+            {flag.loans.map((loan) => (
+              <li key={loan.plan}>
+                {studentLoanPlanRules[loan.plan].name} repayments start on 6 April{" "}
+                {loan.firstRepaymentYear}, so nothing is taken for it in{" "}
+                {taxYearLabel(result.taxYear)}.
+              </li>
+            ))}
+          </ul>
+        ),
+      };
     case "tax-not-deducted":
       return {
         key: flag.kind,

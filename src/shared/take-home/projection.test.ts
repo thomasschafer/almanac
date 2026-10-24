@@ -206,6 +206,63 @@ describe("unknown inputs", () => {
   });
 });
 
+describe("repayments that aren't due yet", () => {
+  const options = {
+    salary: 45_000,
+    loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear: 2028 }],
+  } as const;
+  const loan = onlyLoan(project(options));
+
+  it("adds interest but takes nothing until 6 April of the first repayment year", () => {
+    const before = loan.months.filter((m) => m.date < "2028-04-06");
+    expect(before.length).toBe(18);
+    expect(before.every((m) => m.repaid === 0 && m.interest > 0)).toBe(true);
+    expect(loan.months.find((m) => m.date === "2028-05-05")?.repaid).toBeGreaterThan(0);
+    expect(loan.repaymentsStart).toBe("2028-04-06");
+    expectBalanceAddsUp(loan, 30_000);
+  });
+
+  it("doesn't take a share of another plan's repayments before then", () => {
+    const shared = project({
+      salary: 45_000,
+      loans: [
+        { plan: "plan1", balance: 20_000, firstRepaymentYear: 2015 },
+        { plan: "plan2", balance: 30_000, firstRepaymentYear: 2028 },
+      ],
+    });
+    const alone = project({
+      salary: 45_000,
+      loans: [{ plan: "plan1", balance: 20_000, firstRepaymentYear: 2015 }],
+    });
+    const firstYear = (projection: typeof alone) => projection.loans[0]?.points[1]?.repaid;
+    expect(firstYear(shared)).toBe(firstYear(alone));
+  });
+
+  it("starts at once when the year is past or unknown", () => {
+    for (const firstRepaymentYear of [2020, 2026, null]) {
+      const started = onlyLoan(
+        project({ ...options, loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear }] }),
+      );
+      expect(started.repaymentsStart).toBeNull();
+      expect(started.months[0]?.repaid).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("a loan that's already repaid", () => {
+  it("is reported as repaid, with nothing to chart or take", () => {
+    const projection = project({
+      salary: 45_000,
+      loans: [{ plan: "plan2", balance: 0, firstRepaymentYear: null }],
+    });
+    const loan = onlyLoan(projection);
+    expect(loan.outcome).toEqual({ kind: "already-repaid" });
+    expect(loan.points).toEqual([]);
+    expect(loan.months).toEqual([]);
+    expect(projection.totalRepaid).toBe(0);
+  });
+});
+
 describe("years without rules", () => {
   it("won't start in a tax year with no rules", () => {
     expect(

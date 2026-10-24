@@ -21,8 +21,29 @@ function time(date: string): number {
 }
 
 export function outcomeSentence(loan: LoanProjection): React.ReactNode {
+  return (
+    <>
+      {outcomeOnly(loan)}
+      {loan.repaymentsStart !== null && (
+        <>
+          {" "}
+          Repayments start in <strong>{formatMonthYear(loan.repaymentsStart)}</strong>.
+        </>
+      )}
+    </>
+  );
+}
+
+function outcomeOnly(loan: LoanProjection): React.ReactNode {
   const outcome: LoanOutcome = loan.outcome;
   switch (outcome.kind) {
+    case "already-repaid":
+      return (
+        <>
+          <strong>{loan.name}</strong> is already repaid. Remove it from your student loans if it's
+          still taken from your pay.
+        </>
+      );
     case "repaid":
       return (
         <>

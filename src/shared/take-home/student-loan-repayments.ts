@@ -38,6 +38,14 @@ function undergraduatePlans(
   return undergraduate;
 }
 
+/**
+ * Whether a loan's repayments are due in the tax year starting in `startYear`. They're due from 6
+ * April of the first repayment year; an unknown year is taken as already due.
+ */
+export function repaymentsDue(firstRepaymentYear: number | null, startYear: number): boolean {
+  return firstRepaymentYear === null || firstRepaymentYear <= startYear;
+}
+
 export function studentLoanRepayments(
   niablePay: Pence,
   plans: readonly StudentLoanPlan[],

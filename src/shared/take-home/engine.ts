@@ -21,6 +21,7 @@ import type {
   PayBreakdown,
   PensionBreakdown,
   ProvisionalFigure,
+  StudentLoanDeduction,
   TakeHomeFlag,
   TakeHomeResult,
   TaxCodeUsed,
@@ -32,7 +33,11 @@ import {
   type TaxRegime,
   type TaxYearRules,
 } from "./rules/types.ts";
-import { studentLoanRepayments, type StudentLoanRules } from "./student-loan-repayments.ts";
+import {
+  repaymentsDue,
+  studentLoanRepayments,
+  type StudentLoanRules,
+} from "./student-loan-repayments.ts";
 import { deriveTaxCode, parseTaxCode } from "./tax-code.ts";
 
 const planLabels: Readonly<Record<StudentLoanPlan, string>> = {
@@ -203,6 +208,13 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   const { use } = reader;
   const { pension } = inputs;
   const plans = inputs.studentLoans.map((loan) => loan.plan);
+  const notYetDue = inputs.studentLoans.flatMap(({ plan, firstRepaymentYear }) =>
+    firstRepaymentYear !== null && !repaymentsDue(firstRepaymentYear, rules.startYear)
+      ? [{ plan, firstRepaymentYear }]
+      : [],
+  );
+  /** The plans repayments are taken for this year: all but those not due until a later year. */
+  const duePlans = plans.filter((plan) => !notYetDue.some((loan) => loan.plan === plan));
   const regionRegime: TaxRegime = inputs.region;
   const bandsFor = (regime: TaxRegime) => use(rules.incomeTax.bands[regime], regimeLabels[regime]);
 
@@ -277,7 +289,7 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
     secondaryThreshold: use(ni.secondaryThreshold, "Employer NI secondary threshold").monthly,
     employerRate: use(ni.employerRate, "Employer NI rate"),
   };
-  for (const plan of plans) {
+  for (const plan of duePlans) {
     use(rules.studentLoans[plan].threshold, `${planLabels[plan]} repayment threshold`);
     use(rules.studentLoans[plan].rate, `${planLabels[plan]} repayment rate`);
   }
@@ -294,7 +306,17 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
             pension.employerNiPassOnPercent,
           )
         : asPence(0);
-    const studentLoans = studentLoanRepayments(month.niablePay, plans, studentLoanRules);
+    const dueRepayments = studentLoanRepayments(month.niablePay, duePlans, studentLoanRules);
+    const studentLoans = plans.map((plan): StudentLoanDeduction => {
+      if (!duePlans.includes(plan)) {
+        return { plan, amount: asPence(0) };
+      }
+      const deduction = dueRepayments.find((entry) => entry.plan === plan);
+      if (deduction === undefined) {
+        throw new Error(`no ${plan} repayment worked out`);
+      }
+      return deduction;
+    });
     const studentLoanTotal = sum(studentLoans.map((deduction) => deduction.amount));
     const monthPension = pensionBreakdown(pension.method, {
       employee: month.employeeContribution,
@@ -405,7 +427,7 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
         ? taperRate
         : null,
     niRates,
-    plans,
+    plans: duePlans,
     studentLoanRules,
     method: pension.method,
     reliefAtSourceRate: rules.pensions.reliefAtSourceRate.value,
@@ -469,6 +491,9 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
     (codeRegime === "scotland") !== (regionRegime === "scotland")
   ) {
     flags.push({ kind: "tax-code-region-mismatch", codeRegime, region: inputs.region });
+  }
+  if (notYetDue.length > 0) {
+    flags.push({ kind: "student-loans-not-due", loans: notYetDue });
   }
   if (paye.notDeducted > 0) {
     flags.push({ kind: "tax-not-deducted", amount: paye.notDeducted });

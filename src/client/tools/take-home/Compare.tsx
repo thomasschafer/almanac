@@ -9,6 +9,8 @@ function loanEnd(projection: StudentLoanProjection): string | null {
   return projection.loans
     .map((loan) => {
       switch (loan.outcome.kind) {
+        case "already-repaid":
+          return "Repaid";
         case "repaid":
           return `Repaid ${formatMonthYear(loan.outcome.date)}`;
         case "written-off":
