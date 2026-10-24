@@ -200,6 +200,8 @@ function percentOfGross(amount: Pence, gross: Pence): number {
  * the rules for `inputs.taxYear`. Problems with the inputs (such as a mistyped tax code) come back
  * as an invalid result rather than an exception.
  */
+type NotTakenLoan = Extract<TakeHomeFlag, { kind: "student-loans-not-taken" }>["loans"][number];
+
 export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): TakeHomeResult {
   if (inputs.taxYear !== rules.id) {
     throw new Error(`inputs are for ${inputs.taxYear} but the rules are for ${rules.id}`);
@@ -208,13 +210,19 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   const { use } = reader;
   const { pension } = inputs;
   const plans = inputs.studentLoans.map((loan) => loan.plan);
-  const notYetDue = inputs.studentLoans.flatMap(({ plan, firstRepaymentYear }) =>
-    firstRepaymentYear !== null && !repaymentsDue(firstRepaymentYear, rules.startYear)
-      ? [{ plan, firstRepaymentYear }]
-      : [],
+  const notTaken = inputs.studentLoans.flatMap(
+    ({ plan, balance, firstRepaymentYear }): NotTakenLoan[] =>
+      balance === 0
+        ? [{ plan, reason: { kind: "repaid" } }]
+        : firstRepaymentYear !== null && !repaymentsDue(firstRepaymentYear, rules.startYear)
+          ? [{ plan, reason: { kind: "not-due", firstRepaymentYear } }]
+          : [],
   );
-  /** The plans repayments are taken for this year: all but those not due until a later year. */
-  const duePlans = plans.filter((plan) => !notYetDue.some((loan) => loan.plan === plan));
+  /**
+   * The plans repayments are taken for this year: all but those already repaid or not due until a
+   * later year.
+   */
+  const duePlans = plans.filter((plan) => !notTaken.some((loan) => loan.plan === plan));
   const regionRegime: TaxRegime = inputs.region;
   const bandsFor = (regime: TaxRegime) => use(rules.incomeTax.bands[regime], regimeLabels[regime]);
 
@@ -492,8 +500,8 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   ) {
     flags.push({ kind: "tax-code-region-mismatch", codeRegime, region: inputs.region });
   }
-  if (notYetDue.length > 0) {
-    flags.push({ kind: "student-loans-not-due", loans: notYetDue });
+  if (notTaken.length > 0) {
+    flags.push({ kind: "student-loans-not-taken", loans: notTaken });
   }
   if (paye.notDeducted > 0) {
     flags.push({ kind: "tax-not-deducted", amount: paye.notDeducted });

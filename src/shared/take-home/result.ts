@@ -184,12 +184,15 @@ export type TakeHomeFlag =
       readonly codeRegime: TaxRegime;
       readonly region: TakeHomeInputs["region"];
     }
-  /** Loans whose repayments aren't due until a later tax year, so nothing is taken this year. */
+  /** Loans nothing is taken for this year, and why. */
   | {
-      readonly kind: "student-loans-not-due";
+      readonly kind: "student-loans-not-taken";
       readonly loans: readonly {
         readonly plan: StudentLoanPlan;
-        readonly firstRepaymentYear: number;
+        readonly reason:
+          | { readonly kind: "not-due"; readonly firstRepaymentYear: number }
+          /** A balance of £0 means there's nothing left to repay. */
+          | { readonly kind: "repaid" };
       }[];
     }
   /** The K-code overriding limit stopped some tax being taken through payroll. */

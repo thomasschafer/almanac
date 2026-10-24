@@ -408,18 +408,32 @@ function flagInsight(
         title: "Your tax code doesn't match where you live",
         body: `The code is for ${flag.codeRegime === "scotland" ? "Scottish" : flag.codeRegime === "wales" ? "Welsh" : "English and Northern Irish"} rates, so the figures use those.`,
       };
-    case "student-loans-not-due":
+    case "student-loans-not-taken":
       return {
         key: flag.kind,
         severity: "info",
-        title: "Student loan repayments haven't started yet",
+        title: flag.loans.every((loan) => loan.reason.kind === "not-due")
+          ? "Student loan repayments haven't started yet"
+          : flag.loans.every((loan) => loan.reason.kind === "repaid")
+            ? "Nothing left to repay on a student loan"
+            : "Some student loan repayments aren't taken",
         body: (
           <ul className="plain-list">
             {flag.loans.map((loan) => (
               <li key={loan.plan}>
-                {studentLoanPlanRules[loan.plan].name} repayments start on 6 April{" "}
-                {loan.firstRepaymentYear}, so nothing is taken for it in{" "}
-                {taxYearLabel(result.taxYear)}.
+                {loan.reason.kind === "not-due" ? (
+                  <>
+                    {studentLoanPlanRules[loan.plan].name} repayments start on 6 April{" "}
+                    {loan.reason.firstRepaymentYear}, so nothing is taken for it in{" "}
+                    {taxYearLabel(result.taxYear)}.
+                  </>
+                ) : (
+                  <>
+                    {studentLoanPlanRules[loan.plan].name} has no balance left, so nothing is taken
+                    for it. If it's still on your payslip, the Student Loans Company can stop the
+                    deductions and refund any overpayment.
+                  </>
+                )}
               </li>
             ))}
           </ul>

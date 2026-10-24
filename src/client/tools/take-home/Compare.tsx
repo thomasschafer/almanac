@@ -26,8 +26,16 @@ function loanEnd(projection: StudentLoanProjection): string | null {
     .join(", ");
 }
 
+/**
+ * The total repaid over each loan's life, or null unless every loan ends within the projection:
+ * otherwise the total only covers the projection's horizon, which isn't comparable.
+ */
 function loanRepaid(projection: StudentLoanProjection): number | null {
-  return projection.status === "ok" && projection.loans.length > 0 ? projection.totalRepaid : null;
+  if (projection.status !== "ok" || projection.loans.length === 0) return null;
+  const allEnd = projection.loans.every((loan) =>
+    ["already-repaid", "repaid", "written-off"].includes(loan.outcome.kind),
+  );
+  return allEnd ? projection.totalRepaid : null;
 }
 
 interface Row {

@@ -197,8 +197,11 @@ test("says when repayments start, and when a loan is already repaid", async ({ p
   const panel = page.locator(".loan-panel");
   await expect(panel).toContainText("Plan 1 is already repaid");
   await expect(panel).toContainText("Repayments start in April 2028.");
-  await expect(page.getByText("Student loan repayments haven't started yet")).toBeVisible();
+  await expect(page.getByText("Some student loan repayments aren't taken")).toBeVisible();
   await expect(page.getByText(/Plan 2 repayments start on 6 April 2028/)).toBeVisible();
+  await expect(
+    page.getByText(/Plan 1 has no balance left, so nothing is taken for it/),
+  ).toBeVisible();
 });
 
 test("a month that refunds tax shows the refund, so the breakdown adds up", async ({ page }) => {
