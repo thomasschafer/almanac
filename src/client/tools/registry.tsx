@@ -2,7 +2,7 @@ import { Banknote, type LucideIcon } from "lucide-react";
 import { lazy, type LazyExoticComponent, type ComponentType } from "react";
 import type { Notice } from "../../shared/notices.ts";
 import { takeHomeNotices } from "../../shared/take-home/rules/review.ts";
-import { unsavedNotices } from "../state/useToolState.ts";
+import { unsavedNotices } from "../state/tool-store.ts";
 
 export interface Tool {
   readonly id: string;

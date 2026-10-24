@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 import type { Notice } from "../../shared/notices.ts";
 import { readLocal, writeLocal } from "../local-store.ts";
-import { subscribeToolCaches } from "../state/useToolState.ts";
+import { subscribeToolCaches } from "../state/tool-store.ts";
 import { tools } from "../tools/registry.tsx";
 
 const DISMISSED_KEY = "almanac:dismissed-notices";

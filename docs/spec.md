@@ -24,7 +24,9 @@ Each tool keeps one current state, shared across devices: what you see when you 
 what you left, wherever you left it. Edits save automatically, shortly after you stop typing,
 or straight away when you leave the tool or the app goes to the background. Saves go one at a
 time, so they reach the server in order. Edits are kept on the device until they're saved, and
-while any aren't, because a save failed or the tool was left before one finished, a notice says
+every page and tab on the device shares them, so opening the tool again, in another tab or after
+coming back to the app, never replaces edits that aren't saved yet with an older copy. While
+any aren't, because a save failed or the tool was left before one finished, a notice says
 so from any page. It can't be dismissed, as those edits could be lost. Presets are named copies of a tool's state that can be loaded, updated, renamed and deleted.
 Loading a preset replaces the current state.
 
