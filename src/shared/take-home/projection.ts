@@ -172,8 +172,21 @@ function plan2Rate(
   upper: Pence,
 ): number {
   const share = upper <= lower ? 1 : Math.min(1, Math.max(0, (income - lower) / (upper - lower)));
-  const rate = rpi + (rule.maxMargin / 100) * share;
-  return rule.cap === null ? rate : Math.min(rate, rule.cap / 100);
+  return capped(rpi + (rule.maxMargin / 100) * share, rule.cap);
+}
+
+/** Where a loan is in its life, which sets the interest rule that applies. */
+export type InterestPeriod =
+  /** Before 6 April of the year repayments are first due. */
+  | { readonly kind: "before-repayments-due" }
+  /** Plan 2's income-linked rate needs the tax year's income and its interest thresholds. */
+  | {
+      readonly kind: "repayments-due";
+      readonly plan2: { readonly income: Pence; readonly lower: Pence; readonly upper: Pence };
+    };
+
+function capped(rate: number, cap: Rate | null): number {
+  return cap === null ? rate : Math.min(rate, cap / 100);
 }
 
 /** The annual interest rate as a percentage for a plan in a month starting on `date`. */
@@ -181,13 +194,19 @@ export function interestRate(
   plan: StudentLoanPlan,
   date: string,
   rpiPercent: number,
-  plan2: { income: Pence; lower: Pence; upper: Pence },
+  period: InterestPeriod,
 ): number {
-  const rule = studentLoanPlanRules[plan].interest.value;
+  const rules = studentLoanPlanRules[plan];
+  const before = period.kind === "before-repayments-due" ? rules.interestBeforeRepaymentsDue : null;
+  const rule: InterestRule = before?.value ?? rules.interest.value;
   const known = interestYearFor(date);
   const rpi = known === undefined ? rpiPercent : known.rpi.value / 100;
   if (rule.kind === "income-linked") {
-    const rate = plan2Rate(rpi, rule, plan2.income, plan2.lower, plan2.upper);
+    if (period.kind !== "repayments-due") {
+      throw new Error(`${rules.name} has no interest rule for before repayments are due`);
+    }
+    const { income, lower, upper } = period.plan2;
+    const rate = plan2Rate(rpi, rule, income, lower, upper);
     if (known !== undefined) {
       const { minimum, maximum } = known.plan2.value;
       if (rate < minimum / 100 - 1e-9 || rate > maximum / 100 + 1e-9) {
@@ -204,17 +223,18 @@ export function interestRate(
       case "postgraduate":
         return known[plan].value / 100;
       case "plan2":
-        throw new Error("Plan 2 interest is income-linked");
+        if (before === null) {
+          throw new Error("Plan 2 interest is income-linked once repayments are due");
+        }
+        return known.plan2BeforeRepaymentsDue.value / 100;
     }
   }
   switch (rule.kind) {
     case "rpi":
     case "lower-of-rpi-and-bank-rate":
       return rpi;
-    case "rpi-plus": {
-      const rate = rpi + rule.margin / 100;
-      return rule.cap === null ? rate : Math.min(rate, rule.cap / 100);
-    }
+    case "rpi-plus":
+      return capped(rpi + rule.margin / 100, rule.cap);
   }
 }
 
@@ -242,7 +262,7 @@ function taxMonthOf(date: string): number {
 function assumptionsFor(
   inputs: TakeHomeInputs,
   registry: TaxYearRegistry,
-  plans: readonly StudentLoanPlan[],
+  firstStartYear: number,
 ): string[] {
   const { salaryGrowthPercent, rpiPercent } = inputs.projection;
   const latest = registry.at(-1);
@@ -256,11 +276,15 @@ function assumptionsFor(
     "Interest is added each month at a twelfth of the yearly rate, before that month's repayment.",
     "Repayments start with the pay month the projection starts in, or on 6 April of the year they're first due if that's later.",
   ];
-  for (const plan of plans) {
-    const rules = studentLoanPlanRules[plan];
+  for (const loan of inputs.studentLoans) {
+    const rules = studentLoanPlanRules[loan.plan];
+    const notYetDue = !repaymentsDue(loan.firstRepaymentYear, firstStartYear);
     const notes = [
       ["repayment threshold", rules.thresholdUprating],
       ["interest", rules.interest],
+      ...(notYetDue && rules.interestBeforeRepaymentsDue !== null
+        ? [["interest before repayments are due", rules.interestBeforeRepaymentsDue] as const]
+        : []),
       ["write-off", rules.writeOffYears],
     ] as const;
     for (const [topic, sourced] of notes) {
@@ -478,7 +502,14 @@ export function projectStudentLoans(
         if (state.balance === null) {
           continue;
         }
-        const rate = interestRate(state.plan, monthStart(startYear, month), rpiPercent, plan2);
+        const rate = interestRate(
+          state.plan,
+          monthStart(startYear, month),
+          rpiPercent,
+          repaymentsDue(state.firstRepaymentYear, startYear)
+            ? { kind: "repayments-due", plan2 }
+            : { kind: "before-repayments-due" },
+        );
         const interest = Math.round((state.balance * rate) / 1_200);
         const due = state.balance + interest;
         const deduction = collecting.includes(state)
@@ -535,10 +566,6 @@ export function projectStudentLoans(
     loans,
     totalRepaid: sum(loans.map((loan) => loan.totalRepaid)),
     totalInterest: sum(loans.map((loan) => loan.totalInterest)),
-    assumptions: assumptionsFor(
-      inputs,
-      registry,
-      states.map((state) => state.plan),
-    ),
+    assumptions: assumptionsFor(inputs, registry, firstStartYear),
   };
 }

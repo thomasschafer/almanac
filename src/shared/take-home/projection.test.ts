@@ -326,19 +326,18 @@ describe("threshold uprating", () => {
 
 describe("interest", () => {
   const thresholds = { lower: pounds(29_385), upper: pounds(52_885) };
+  const due = (income: number) =>
+    ({ kind: "repayments-due", plan2: { ...thresholds, income: pounds(income) } }) as const;
+  const beforeDue = { kind: "before-repayments-due" } as const;
 
   it("uses the announced rates for 2026/27", () => {
-    expect(
-      interestRate("plan1", "2026-10-06", 3, { ...thresholds, income: pounds(30_000) }),
-    ).toBeCloseTo(4.1);
-    expect(
-      interestRate("postgraduate", "2026-10-06", 3, { ...thresholds, income: pounds(30_000) }),
-    ).toBeCloseTo(6);
+    expect(interestRate("plan1", "2026-10-06", 3, due(30_000))).toBeCloseTo(4.1);
+    expect(interestRate("postgraduate", "2026-10-06", 3, due(30_000))).toBeCloseTo(6);
   });
 
   it("scales Plan 2 with income, capped at 6%", () => {
     const rate = (income: number, date = "2026-10-06") =>
-      interestRate("plan2", date, 3, { ...thresholds, income: pounds(income) });
+      interestRate("plan2", date, 3, due(income));
     expect(rate(25_000)).toBeCloseTo(4.1);
     expect(rate(41_135)).toBeCloseTo(5.6);
     expect(rate(52_885)).toBeCloseTo(6);
@@ -346,11 +345,82 @@ describe("interest", () => {
   });
 
   it("follows each plan's rule with the assumed RPI after the known years", () => {
-    const income = { ...thresholds, income: pounds(30_000) };
+    const income = due(30_000);
     expect(interestRate("plan1", "2027-09-06", 2.5, income)).toBeCloseTo(2.5);
     expect(interestRate("plan5", "2027-09-06", 2.5, income)).toBeCloseTo(2.5);
     expect(interestRate("postgraduate", "2027-09-06", 2.5, income)).toBeCloseTo(5.5);
     expect(interestRate("postgraduate", "2027-09-06", 4, income)).toBeCloseTo(6);
+  });
+
+  it("charges Plan 2 RPI + 3%, capped, before repayments are due", () => {
+    expect(interestRate("plan2", "2026-10-06", 3, beforeDue)).toBeCloseTo(6);
+    expect(interestRate("plan2", "2027-10-06", 2, beforeDue)).toBeCloseTo(5);
+    expect(interestRate("plan2", "2027-10-06", 4, beforeDue)).toBeCloseTo(6);
+  });
+
+  it("leaves the other plans' rates the same before repayments are due", () => {
+    for (const plan of ["plan1", "plan4", "plan5", "postgraduate"] as const) {
+      for (const [date, rpi] of [
+        ["2026-10-06", 3],
+        ["2027-10-06", 2],
+        ["2027-10-06", 4],
+      ] as const) {
+        expect(interestRate(plan, date, rpi, beforeDue)).toBe(
+          interestRate(plan, date, rpi, due(30_000)),
+        );
+      }
+    }
+    // The Postgraduate Loan is RPI + 3%, capped at 6%, throughout.
+    expect(interestRate("postgraduate", "2027-10-06", 2, beforeDue)).toBeCloseTo(5);
+  });
+});
+
+describe("Plan 2 interest before repayments are due", () => {
+  // On £20,000, below the repayment threshold, the income-linked rate would be RPI alone.
+  const options = {
+    salary: 20_000,
+    loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear: 2028 }],
+    rpiPercent: 2,
+  } as const;
+  const projection = project(options);
+  const loan = onlyLoan(projection);
+  const rateOn = (date: string) => loan.months.find((m) => m.date === date)?.interestRatePercent;
+
+  it("is RPI + 3%, capped at 6%, until 6 April of the first repayment year", () => {
+    // 2026/27 is announced at 6%; after that, RPI 2% + 3%.
+    expect(rateOn("2026-11-05")).toBeCloseTo(6);
+    expect(rateOn("2027-10-05")).toBeCloseTo(5);
+    expect(rateOn("2028-04-05")).toBeCloseTo(5);
+  });
+
+  it("becomes income-linked once repayments are due", () => {
+    expect(rateOn("2028-05-05")).toBeCloseTo(2);
+    expectBalanceAddsUp(loan, 30_000);
+  });
+
+  it("lists the assumption", () => {
+    expect(
+      projection.assumptions.some((text) =>
+        text.startsWith("Plan 2 interest before repayments are due: RPI + 3% while studying"),
+      ),
+    ).toBe(true);
+    const started = project({
+      ...options,
+      loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear: 2020 }],
+    });
+    expect(started.assumptions.some((text) => text.includes("before repayments are due"))).toBe(
+      false,
+    );
+  });
+
+  it("is income-linked throughout when the first repayment year is unknown", () => {
+    const unknown = onlyLoan(
+      project({
+        ...options,
+        loans: [{ plan: "plan2", balance: 30_000, firstRepaymentYear: null }],
+      }),
+    );
+    expect(unknown.months.find((m) => m.date === "2027-10-05")?.interestRatePercent).toBeCloseTo(2);
   });
 });
 

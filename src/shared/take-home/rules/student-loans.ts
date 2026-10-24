@@ -43,11 +43,20 @@ export type ThresholdUprating =
     }
   | { readonly kind: "fixed" };
 
+/** An interest rule that doesn't depend on income. */
+export type FlatInterestRule = Exclude<InterestRule, { kind: "income-linked" }>;
+
 export interface StudentLoanPlanRules {
   readonly name: string;
   /** Written off this many years after the April the borrower was first due to repay. */
   readonly writeOffYears: Sourced<number>;
+  /** Once repayments are due. */
   readonly interest: Sourced<InterestRule>;
+  /**
+   * Before 6 April of the year repayments are first due, if that differs from `interest`. An
+   * income-linked rate needs the year's income, so a plan with one needs a rule for before then.
+   */
+  readonly interestBeforeRepaymentsDue: Sourced<FlatInterestRule> | null;
   readonly thresholdUprating: Sourced<ThresholdUprating>;
 }
 
@@ -65,6 +74,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
       { kind: "lower-of-rpi-and-bank-rate", bankRateMargin: percent(1) },
       announcement2026,
     ),
+    interestBeforeRepaymentsDue: null,
     thresholdUprating: confirmed(
       { kind: "rpi", roundUpTo: roundUpToFivePounds },
       repaymentRegulations,
@@ -77,6 +87,13 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
       { kind: "income-linked", maxMargin: percent(3), cap: percent(6) },
       announcement2026,
       capNote,
+    ),
+    interestBeforeRepaymentsDue: provisional(
+      { kind: "rpi-plus", margin: percent(3), cap: percent(6) },
+      interestPage,
+      "RPI + 3% while studying, until the rate becomes income-linked on 6 April after leaving " +
+        "the course, taken as the April repayments are first due. " +
+        capNote,
     ),
     thresholdUprating: provisional(
       { kind: "frozen-then-rpi", frozenThroughStartYear: 2029, roundUpTo: roundUpToFivePounds },
@@ -98,6 +115,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
       interestPage,
       "Plan 4 follows the same rule as Plan 1 and is 4.1% for 2026/27.",
     ),
+    interestBeforeRepaymentsDue: null,
     thresholdUprating: provisional(
       { kind: "rpi", roundUpTo: roundUpToFivePounds },
       "https://www.legislation.gov.uk/ssi/2012/22/made",
@@ -108,6 +126,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
     name: "Plan 5",
     writeOffYears: confirmed(40, writeOffPage),
     interest: confirmed({ kind: "rpi" }, announcement2026),
+    interestBeforeRepaymentsDue: null,
     thresholdUprating: confirmed(
       { kind: "rpi", roundUpTo: roundUpToFivePounds },
       repaymentRegulations,
@@ -121,6 +140,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
       announcement2026,
       capNote,
     ),
+    interestBeforeRepaymentsDue: null,
     thresholdUprating: confirmed(
       { kind: "fixed" },
       repaymentRegulations,
@@ -153,8 +173,13 @@ export interface InterestYear {
   readonly plan4: Sourced<Rate>;
   readonly plan5: Sourced<Rate>;
   readonly postgraduate: Sourced<Rate>;
-  /** Plan 2's rate at or below the lower income threshold, and at or above the upper one. */
+  /**
+   * Plan 2's rate once repayments are due, at or below the lower income threshold and at or above
+   * the upper one.
+   */
   readonly plan2: Sourced<{ readonly minimum: Rate; readonly maximum: Rate }>;
+  /** Plan 2's rate before repayments are due, as while studying. */
+  readonly plan2BeforeRepaymentsDue: Sourced<Rate>;
 }
 
 export const interestYears: readonly InterestYear[] = [
@@ -170,6 +195,11 @@ export const interestYears: readonly InterestYear[] = [
       { minimum: percent(4.1), maximum: percent(6) },
       interestPage,
       "RPI to RPI + 3% (7.1%), capped at 6%.",
+    ),
+    plan2BeforeRepaymentsDue: confirmed(
+      percent(6),
+      announcement2026,
+      "While studying: RPI + 3% (7.1%), capped at 6%.",
     ),
   },
 ];

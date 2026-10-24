@@ -108,8 +108,10 @@ A chart of each loan's balance, year by year, from today's balance until it's re
 off, with salary growing at the assumed rate and interest following each plan's rules (Plan 2's
 income-linked rate included). It says which comes first, when, and the total you'd repay. A loan
 whose repayments haven't started yet adds interest until 6 April of its first repayment year, and
-only then has repayments taken; an unknown first repayment year is taken as already started. A
-balance of 0 is shown as already repaid.
+only then has repayments taken; an unknown first repayment year is taken as already started.
+Until then, Plan 2 adds interest at its rate while studying (RPI + 3%, under the same cap), and
+only moves to the income-linked rate once repayments are due. A balance of 0 is shown as already
+repaid.
 
 Its breakdown page (`/take-home/student-loans`) has a larger chart, what's repaid and added in
 interest each tax year, and a table by tax year that opens out into each month's pay, interest

@@ -12,8 +12,9 @@ Everything is in `src/shared/take-home/rules/`:
   checked against, and provisional values say why. Each year records `lastReviewed`.
 - `registry.ts`: the years in order. The registry must have no gaps; it checks itself on import.
 - `student-loans.ts`: rules that aren't tied to one tax year. Write-off terms, each plan's interest
-  rule, the announced interest rates for each academic year, how repayment thresholds are expected
-  to be uprated after the known years, and the cap on NI-free salary sacrifice from April 2029.
+  rule (and Plan 2's different rule before repayments are due), the announced interest rates for
+  each academic year, how repayment thresholds are expected to be uprated after the known years,
+  and the cap on NI-free salary sacrifice from April 2029.
 - `review.ts`: the events after which the rules need checking, and `takeHomeNotices`, which raises
   the notices described in the spec.
 
