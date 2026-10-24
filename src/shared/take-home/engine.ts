@@ -1,5 +1,6 @@
 import { asPence, type Pence } from "../money.ts";
 import {
+  floorToPound,
   itemAt,
   minus,
   percentOf,
@@ -405,12 +406,14 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   ]);
   const aaTapered =
     thresholdIncome > aaTaper.thresholdIncome && adjustedIncome > aaTaper.adjustedIncome;
+  // The reduction is rounded down to the pound before the minimum applies (PTM057100):
+  // https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057100
   const allowance = aaTapered
     ? asPence(
         Math.max(
           aaTaper.minimumAllowance,
           standardAllowance -
-            rateOfDown(minus(adjustedIncome, aaTaper.adjustedIncome), aaTaper.rate),
+            floorToPound(rateOfDown(minus(adjustedIncome, aaTaper.adjustedIncome), aaTaper.rate)),
         ),
       )
     : standardAllowance;

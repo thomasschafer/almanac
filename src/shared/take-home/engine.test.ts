@@ -355,6 +355,16 @@ describe("the annual allowance", () => {
     });
   });
 
+  it("rounds the reduction down to the pound", () => {
+    // £40,000.50 over the limit reduces the allowance by £20,000.25, rounded down to £20,000.
+    const result = calculate({ salary: 300_000.5 });
+    expect(result.annualAllowance).toMatchObject({
+      adjustedIncome: pounds(300_000.5),
+      tapered: true,
+      allowance: pounds(40_000),
+    });
+  });
+
   it("doesn't taper below the minimum", () => {
     const result = calculate({ salary: 500_000 });
     expect(result.annualAllowance).toMatchObject({
