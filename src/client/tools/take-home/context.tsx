@@ -11,8 +11,7 @@ import type {
 import { findTaxYearRules, taxYearRegistry } from "../../../shared/take-home/rules/registry.ts";
 import type { TakeHomeState } from "../../../shared/take-home/state.ts";
 import { readLocal, writeLocal } from "../../local-store.ts";
-import { usePublishNotices } from "../../shell/notices.tsx";
-import { type SyncStatus, useToolState } from "../../state/useToolState.ts";
+import { useToolState } from "../../state/useToolState.ts";
 import { defaultInputs } from "./defaults.ts";
 import { usePresets } from "./Presets.tsx";
 
@@ -63,20 +62,6 @@ function useUi(): [Ui, (change: Partial<Ui>) => void] {
   return [ui, change];
 }
 
-function syncNotices(status: SyncStatus) {
-  return status.kind === "unsaved"
-    ? [
-        {
-          id: "take-home:unsaved",
-          toolId: "take-home",
-          severity: "warning" as const,
-          title: "Take-home changes aren't saved yet",
-          body: `They're kept on this device and will be saved when the laptop can be reached. (${status.message})`,
-        },
-      ]
-    : [];
-}
-
 export function useTakeHomeValue() {
   const [now] = useState(() => new Date());
   const defaults = useCallback(
@@ -86,7 +71,6 @@ export function useTakeHomeValue() {
   const tool = useToolState("take-home", defaults);
   const [ui, setUi] = useUi();
   const presets = usePresets();
-  usePublishNotices("take-home:sync", syncNotices(tool.status));
 
   const state = tool.state;
   const nowCalculation = useMemo(

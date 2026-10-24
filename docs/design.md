@@ -24,17 +24,19 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
 - Each tool has its own page with the shared header: back link, title, tool actions, and the
   notifications button.
 - The notification drawer collects notices from every tool. Warnings and info can be dismissed;
-  errors stay until fixed.
+  errors, and warnings about edits that could be lost, stay until fixed.
 - On a laptop, a tool's inputs sit in a sticky column on the left with results on the right. On a
   phone they stack, with a slim summary pinned to the top once the main figure scrolls away.
 
 ## Adding a tool
 
-1. Add its state schema to `src/shared/tools.ts`, so the server can store it and its presets.
+1. Add its state schemas to `src/shared/tools.ts`, so the server can store it and its presets:
+   the shape it's written in, and one that also reads any older shapes it was stored in.
 2. Add its identity colour to `src/client/styles/tokens.css`, light and dark.
 3. Build its page under `src/client/tools/<id>/`, using `useToolState` for saved state and the
    components in `src/client/ui/`.
-4. Register it in `src/client/tools/registry.tsx`, with any notices it raises.
+4. Register it in `src/client/tools/registry.tsx`, with any notices it raises, including
+   `unsavedNotices` if it uses `useToolState`.
 
 ## Charts
 

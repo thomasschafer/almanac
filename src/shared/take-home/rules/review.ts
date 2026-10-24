@@ -211,6 +211,7 @@ export function takeHomeNotices(now: Date, registry: TaxYearRegistry = taxYearRe
     notices.push({
       id: `take-home:no-rules:${id}`,
       severity: "error",
+      dismissible: false,
       title: `No tax rules for ${id}`,
       body: `Take-home pay can't be worked out for ${id} until its rules are added.`,
     });
@@ -236,6 +237,7 @@ export function takeHomeNotices(now: Date, registry: TaxYearRegistry = taxYearRe
     notices.push({
       id: `take-home:review-after:${event.id}`,
       severity: "warning",
+      dismissible: true,
       title: `Check the tax rules after the ${pattern.name}`,
       body: `${happened} It can change ${pattern.affects}. The rules for ${stale.map((rules) => rules.id).join(" and ")} were last checked before it.`,
     });
@@ -247,6 +249,7 @@ export function takeHomeNotices(now: Date, registry: TaxYearRegistry = taxYearRe
     notices.push({
       id: `take-home:missing-rules:${id}`,
       severity: "info",
+      dismissible: true,
       title: `Add the tax rules for ${id}`,
       body: `${id} starts on 6 April ${String(nextStartYear)} and its rules haven't been added yet.`,
     });
@@ -263,6 +266,7 @@ export function takeHomeNotices(now: Date, registry: TaxYearRegistry = taxYearRe
     notices.push({
       id: `take-home:stale-rules:${latestReview}`,
       severity: "warning",
+      dismissible: true,
       title: "The tax rules haven't been checked for six months",
       body: `They were last checked on ${formatDate(latestReview)}.`,
     });

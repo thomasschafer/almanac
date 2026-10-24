@@ -23,6 +23,7 @@ describe("takeHomeNotices", () => {
     expect(notice).toEqual({
       id: "take-home:review-after:uk-budget-2027-28",
       severity: "warning",
+      dismissible: true,
       title: "Check the tax rules after the UK Budget",
       body:
         "The UK Budget for 2027-28 was on 28 October 2026. It can change income tax, NI and " +
@@ -73,6 +74,7 @@ describe("takeHomeNotices", () => {
       {
         id: "take-home:missing-rules:2028-29",
         severity: "info",
+        dismissible: true,
         title: "Add the tax rules for 2028-29",
         body: "2028-29 starts on 6 April 2028 and its rules haven't been added yet.",
       },
@@ -87,7 +89,11 @@ describe("takeHomeNotices", () => {
 
   it("is an error when today's tax year has no rules", () => {
     const notices = takeHomeNotices(new Date("2028-04-06T12:00:00Z"));
-    expect(notices[0]).toMatchObject({ id: "take-home:no-rules:2028-29", severity: "error" });
+    expect(notices[0]).toMatchObject({
+      id: "take-home:no-rules:2028-29",
+      severity: "error",
+      dismissible: false,
+    });
   });
 
   it("is an error before the first year too", () => {

@@ -70,6 +70,8 @@ export async function putState<T extends ToolId>(tool: T, state: ToolState<T>): 
   const body = await request(`/tools/${tool}/state`, z.object({ saved: savedSchema(tool) }), {
     method: "PUT",
     body: JSON.stringify({ state }),
+    // Lets a save started as the app is closed or hidden finish.
+    keepalive: true,
   });
   return body.saved as Saved<T>;
 }

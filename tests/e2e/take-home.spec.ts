@@ -252,3 +252,61 @@ test("a loan's balance and first repayment year can be cleared", async ({ page }
     })
     .toEqual([{ plan: "plan2", balance: 3_000_000, firstRepaymentYear: null }]);
 });
+
+async function savedSalary(page: Page): Promise<number> {
+  const res = await page.request.get("/api/tools/take-home/state");
+  const body = (await res.json()) as { saved: { state: { inputs: { salary: number } } } };
+  return body.saved.state.inputs.salary;
+}
+
+test("edits made just before leaving the tool are saved", async ({ page }) => {
+  await page.goto("/take-home");
+  await page.getByLabel("Salary", { exact: true }).fill("71,000");
+  await page.getByRole("link", { name: "Almanac" }).click();
+  await expect(page.getByRole("link", { name: /Take-home pay/ })).toBeVisible();
+  await expect.poll(() => savedSalary(page)).toBe(7_100_000);
+});
+
+test.describe("without a connection to the laptop", () => {
+  // Requests a service worker handles skip the page's routes, so block it to fail saves.
+  test.use({ serviceWorkers: "block" });
+
+  test("unsaved edits keep a notice that can't be dismissed, wherever you are", async ({
+    page,
+  }) => {
+    await page.route("**/api/tools/take-home/state", (route) =>
+      route.request().method() === "PUT" ? route.abort() : route.continue(),
+    );
+    await page.goto("/take-home");
+    await setSalary(page, "72,000");
+    await page.getByRole("link", { name: "Almanac" }).click();
+
+    await page.getByRole("button", { name: /Notifications, \d+ new/ }).click();
+    const notice = page.locator(".notice").filter({ hasText: "changes aren't saved yet" });
+    await expect(notice).toBeVisible();
+    await expect(notice.getByRole("button", { name: "Dismiss" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Close" }).click();
+
+    await page.unroute("**/api/tools/take-home/state");
+    await page.getByRole("link", { name: /Take-home pay/ }).click();
+    await expect.poll(() => savedSalary(page)).toBe(7_200_000);
+    await page.getByRole("button", { name: /Notifications/ }).click();
+    await expect(page.locator(".notice").filter({ hasText: "aren't saved yet" })).toHaveCount(0);
+  });
+});
+
+test("a tax code typed with spaces doesn't make a preset look edited", async ({ page }) => {
+  await saveInputs(page, { ...exampleInputs, taxCode: "1100L" });
+  await page.goto("/take-home");
+  await page.getByRole("button", { name: "Presets" }).click();
+  await page.getByLabel("New preset name").fill("Coded");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("button", { name: "Coded", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /More options/ }).click();
+  await page.getByLabel("Tax code").fill("1100l ");
+  await expect(page.getByLabel("Tax code")).toHaveValue("1100L");
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("button", { name: "Coded", exact: true })).toBeVisible();
+});
