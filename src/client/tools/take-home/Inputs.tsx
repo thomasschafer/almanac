@@ -5,6 +5,7 @@ import {
   type Contribution,
   type PensionMethod,
   pensionMethods,
+  type StudentLoan,
   type StudentLoanPlan,
   studentLoanPlans,
   type TakeHomeInputs,
@@ -188,6 +189,7 @@ export function Inputs({
           prefix="£"
           value={loan.balance}
           format={poundsFormat}
+          nullable
           placeholder="To see when it's repaid"
           hint={was(
             baseline,
@@ -384,6 +386,7 @@ function MoreOptions({
           label={`${studentLoanPlanRules[loan.plan].name}: year repayments started`}
           value={loan.firstRepaymentYear}
           format={yearFormat}
+          nullable
           decimals={false}
           placeholder="Such as 2019"
           hint="The April after you left your course. Loans are written off a set number of years after this."
@@ -423,7 +426,7 @@ function MoreOptions({
 function updateLoan(
   update: Update,
   plan: StudentLoanPlan,
-  change: Partial<{ balance: Pence; firstRepaymentYear: number }>,
+  change: Partial<Pick<StudentLoan, "balance" | "firstRepaymentYear">>,
 ): void {
   update((i) => ({
     ...i,

@@ -222,3 +222,33 @@ test("a month that refunds tax shows the refund, so the breakdown adds up", asyn
   await expect(refund).toContainText("-£381");
   await expect(breakdown).toContainText("come to more than the gross pay");
 });
+
+test("a loan's balance and first repayment year can be cleared", async ({ page }) => {
+  await page.goto("/take-home");
+  const balance = page.getByLabel("Plan 2 balance");
+  await balance.fill("");
+  await balance.blur();
+  await expect(balance).toHaveValue("");
+  await expect(balance).toHaveAttribute("aria-invalid", "false");
+  await expect(page.locator(".loan-panel")).toContainText("Add your Plan 2 balance");
+
+  await balance.fill("30,000");
+  await balance.blur();
+  await page.getByRole("button", { name: /More options/ }).click();
+  const year = page.getByLabel("Plan 2: year repayments started");
+  await expect(year).toHaveValue("2018");
+  await year.fill("");
+  await expect(year).toHaveAttribute("aria-invalid", "false");
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".loan-panel")).toContainText("Add the year repayments started");
+
+  await expect
+    .poll(async () => {
+      const res = await page.request.get("/api/tools/take-home/state");
+      const body = (await res.json()) as {
+        saved: { state: { inputs: TakeHomeInputs } };
+      };
+      return body.saved.state.inputs.studentLoans;
+    })
+    .toEqual([{ plan: "plan2", balance: 3_000_000, firstRepaymentYear: null }]);
+});

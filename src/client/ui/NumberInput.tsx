@@ -43,6 +43,29 @@ export const yearFormat: Format<number> = {
   format: (value) => String(value),
 };
 
+/** What clearing the field means. */
+type Empty<T> =
+  /** It must be filled in: an empty field is invalid and reports nothing. */
+  | { nullable?: false; emptyValue?: undefined; onChange: (value: T) => void }
+  /** An empty field is this value. */
+  | { nullable?: false; emptyValue: T; onChange: (value: T) => void }
+  /** An empty field means there's no value, such as one that isn't known. */
+  | { nullable: true; emptyValue?: undefined; onChange: (value: T | null) => void };
+
+/** What a draft means: a value, no value (when the field is nullable), or nothing valid yet. */
+type Parsed<T> = { kind: "value"; value: T } | { kind: "null" } | { kind: "invalid" };
+
+function parseDraft<T>(text: string, format: Format<T>, empty: Empty<T>): Parsed<T> {
+  if (text.trim() === "") {
+    if (empty.nullable === true) return { kind: "null" };
+    return empty.emptyValue === undefined
+      ? { kind: "invalid" }
+      : { kind: "value", value: empty.emptyValue };
+  }
+  const value = format.parse(text);
+  return value === null ? { kind: "invalid" } : { kind: "value", value };
+}
+
 /**
  * A numeric text field that keeps whatever is typed while it has focus, only reporting values
  * that parse, and tidies the text when it loses focus.
@@ -50,39 +73,33 @@ export const yearFormat: Format<number> = {
 export function NumberInput<T>({
   label,
   value,
-  onChange,
   format,
   prefix,
   suffix,
   hint,
-  emptyValue,
   placeholder,
   decimals = true,
   trailing,
   labelAccessory,
+  ...empty
 }: {
   label: string;
   value: T | null;
-  onChange: (value: T) => void;
   format: Format<T>;
   prefix?: string | undefined;
   suffix?: string | undefined;
   hint?: string | undefined;
-  /** The value an empty field means, or undefined if it must be filled in. */
-  emptyValue?: T | undefined;
   placeholder?: string | undefined;
   decimals?: boolean;
   /** A control at the end of the field, such as a unit toggle. */
   trailing?: ReactNode;
   /** A control beside the label, such as a picker that changes what the field means. */
   labelAccessory?: ReactNode;
-}) {
+} & Empty<T>) {
   const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? (value === null ? "" : format.format(value));
-  const parsed =
-    draft === null ? value : draft.trim() === "" ? (emptyValue ?? null) : format.parse(draft);
-  const invalid = draft !== null && parsed === null;
+  const invalid = draft !== null && parseDraft(draft, format, empty).kind === "invalid";
 
   return (
     <div className="field">
@@ -113,8 +130,9 @@ export function NumberInput<T>({
           onChange={(e) => {
             const text = e.currentTarget.value;
             setDraft(text);
-            const next = text.trim() === "" ? emptyValue : format.parse(text);
-            if (next !== null && next !== undefined) onChange(next);
+            const next = parseDraft(text, format, empty);
+            if (next.kind === "value") empty.onChange(next.value);
+            else if (next.kind === "null" && empty.nullable === true) empty.onChange(null);
           }}
           onBlur={() => {
             setDraft(null);
