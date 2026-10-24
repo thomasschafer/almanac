@@ -45,6 +45,32 @@ function pendingPut() {
   };
 }
 
+/** A GET that stays in flight until the test settles it. */
+function pendingGet() {
+  let settle: { resolve: (state: State) => void; reject: (error: Error) => void } | undefined;
+  const promise = new Promise<State>((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+  vi.mocked(getState).mockImplementationOnce(async () => ({
+    state: await promise,
+    updatedAt: "2026-10-24T11:00:00.000Z",
+  }));
+  return {
+    resolve: async (state: State) => {
+      settle?.resolve(state);
+      await act(async () => {
+        await promise;
+      });
+    },
+    reject: async (message: string) => {
+      settle?.reject(new Error(message));
+      await act(async () => {
+        await promise.catch(() => undefined);
+      });
+    },
+  };
+}
+
 function savedSalaries(): number[] {
   return vi.mocked(putState).mock.calls.map(([, state]) => state.inputs.salary / 100);
 }
@@ -167,6 +193,65 @@ describe("saving", () => {
       result.current.setState((s) => ({ ...s, inputs: { ...s.inputs, taxCode: " 1100l " } }));
     });
     expect(result.current.state?.inputs.taxCode).toBe("1100L");
+  });
+});
+
+describe("loading", () => {
+  it("ignores what the server had if an edit was saved while it was being fetched", async () => {
+    const { result } = await mounted();
+    const get = pendingGet();
+    act(() => {
+      setVisibility("visible");
+    });
+    act(() => {
+      result.current.setState((s) => withSalary(s, 41_000));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(savedSalaries()).toEqual([41_000]);
+    expect(result.current.status.kind).toBe("saved");
+
+    await get.resolve(withSalary(initial, 39_000));
+    expect(result.current.state?.inputs.salary).toBe(4_100_000);
+    expect(result.current.status.kind).toBe("saved");
+  });
+
+  it("only uses the answer to the latest load", async () => {
+    localStorage.clear();
+    const first = pendingGet();
+    const second = pendingGet();
+    const { result } = renderHook(() => useToolState("take-home", () => initial));
+    act(() => {
+      setVisibility("visible");
+    });
+    await second.resolve(withSalary(initial, 42_000));
+    await first.resolve(withSalary(initial, 39_000));
+    expect(result.current.state?.inputs.salary).toBe(4_200_000);
+  });
+
+  it("ignores a failed load that's out of date", async () => {
+    const { result } = await mounted();
+    const get = pendingGet();
+    act(() => {
+      setVisibility("visible");
+    });
+    act(() => {
+      result.current.setState((s) => withSalary(s, 41_000));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    await get.reject("The laptop is asleep");
+    expect(result.current.status.kind).toBe("saved");
+  });
+
+  it("ignores a load that finishes after the tool is left", async () => {
+    const get = pendingGet();
+    const { unmount } = renderHook(() => useToolState("take-home", () => initial));
+    unmount();
+    await get.resolve(withSalary(initial, 39_000));
+    expect(localStorage.length).toBe(0);
   });
 });
 

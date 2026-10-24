@@ -146,12 +146,13 @@ export function useToolState<T extends ToolId>(
   const open = useRef(false);
   /** Whether a save is waiting for the one in flight to finish. */
   const queued = useRef(false);
+  /** Counts loads started, so only the latest one's answer is used. */
+  const loads = useRef(0);
   const defaultsRef = useRef(defaults);
   useEffect(() => {
     defaultsRef.current = defaults;
   }, [defaults]);
   const saveRef = useRef<() => void>(() => undefined);
-  const hasUnsavedEdits = () => latest.current.dirty;
 
   const remember = useCallback(
     (next: ToolState<T>, change: { dirty: boolean; error: string | null; edited: boolean }) => {
@@ -237,21 +238,28 @@ export function useToolState<T extends ToolId>(
       save();
       return;
     }
+    const started = { version: latest.current.version, load: ++loads.current };
+    // What the server had when the request started is out of date if there's been an edit since,
+    // even one that's already saved, or a newer load has started.
+    const current = () =>
+      open.current && loads.current === started.load && latest.current.version === started.version;
+    let saved: Awaited<ReturnType<typeof getState<T>>>;
     try {
-      const saved = await getState(tool);
-      // An edit made while the request was in flight wins over what the server had.
-      if (hasUnsavedEdits()) return;
-      const next = saved?.state ?? latest.current.state ?? defaultsRef.current();
-      remember(next, { dirty: false, error: null, edited: false });
-      setLocalState(next);
-      setStatus({ kind: "saved" });
+      saved = await getState(tool);
     } catch (error) {
+      if (!current()) return;
       if (latest.current.state === null) {
         setStatus({ kind: "unavailable", message: errorMessage(error) });
       } else {
         setStatus({ kind: "unsaved", message: errorMessage(error) });
       }
+      return;
     }
+    if (!current()) return;
+    const next = saved?.state ?? latest.current.state ?? defaultsRef.current();
+    remember(next, { dirty: false, error: null, edited: false });
+    setLocalState(next);
+    setStatus({ kind: "saved" });
   }, [tool, save, remember]);
 
   useEffect(() => {
