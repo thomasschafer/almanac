@@ -116,13 +116,15 @@ describe("presets", () => {
     };
     expect(list.presets.map((p) => p.name)).toEqual(["Old job"]);
 
-    const deleted = await app.request(`/api/tools/take-home/presets/${preset.id}`, {
-      method: "DELETE",
-    });
+    const deleted = await app.request(
+      `/api/tools/take-home/presets/${preset.id}`,
+      jsonRequest("DELETE", undefined),
+    );
     expect(deleted.status).toBe(204);
-    const again = await app.request(`/api/tools/take-home/presets/${preset.id}`, {
-      method: "DELETE",
-    });
+    const again = await app.request(
+      `/api/tools/take-home/presets/${preset.id}`,
+      jsonRequest("DELETE", undefined),
+    );
     expect(again.status).toBe(404);
   });
 
@@ -149,5 +151,102 @@ describe("access", () => {
   it("leaves the health check open, for service checks", async () => {
     const { app } = testApp({ allowedLogin: "owner@example.com" });
     expect((await app.request("/api/health")).status).toBe(200);
+  });
+});
+
+describe("cross-site requests", () => {
+  const put = (headers: Record<string, string>) =>
+    jsonRequest("PUT", { state }, { Host: "laptop.example.ts.net", ...headers });
+
+  it("refuses changes that aren't sent as JSON", async () => {
+    const { app } = testApp();
+    const res = await app.request("/api/tools/take-home/presets", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ name: "Offer", state: inputs }),
+    });
+    expect(res.status).toBe(415);
+    const missing = await app.request("/api/tools/take-home/presets/some-id", {
+      method: "DELETE",
+    });
+    expect(missing.status).toBe(415);
+  });
+
+  it("accepts JSON with a charset", async () => {
+    const { app } = testApp();
+    const res = await app.request(
+      "/api/tools/take-home/state",
+      jsonRequest("PUT", { state }, { "Content-Type": "application/json; charset=utf-8" }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses changes from another site, as browsers describe them", async () => {
+    const { app } = testApp();
+    for (const site of ["cross-site", "same-site"]) {
+      const res = await app.request("/api/tools/take-home/state", put({ "Sec-Fetch-Site": site }));
+      expect(res.status).toBe(403);
+    }
+    expect(
+      (await app.request("/api/tools/take-home/state", put({ "Sec-Fetch-Site": "same-origin" })))
+        .status,
+    ).toBe(200);
+  });
+
+  it("refuses changes from another origin when the browser only sends Origin", async () => {
+    const { app } = testApp();
+    for (const origin of [
+      "https://evil.example",
+      // Another app on the same machine, on another port.
+      "https://laptop.example.ts.net:8443",
+      "http://laptop.example.ts.net",
+      "null",
+    ]) {
+      const res = await app.request(
+        "/api/tools/take-home/state",
+        put({
+          Origin: origin,
+          "X-Forwarded-Host": "laptop.example.ts.net",
+          "X-Forwarded-Proto": "https",
+        }),
+      );
+      expect(res.status, origin).toBe(403);
+    }
+  });
+
+  it("accepts changes from the app's own pages through Tailscale Serve", async () => {
+    const { app } = testApp();
+    // Serve forwards HTTPS to the app over plain HTTP, saying what it was asked for.
+    const res = await app.request(
+      "http://laptop.example.ts.net/api/tools/take-home/state",
+      put({
+        Origin: "https://laptop.example.ts.net",
+        "X-Forwarded-Host": "laptop.example.ts.net",
+        "X-Forwarded-Proto": "https",
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts changes from the app's own pages without a proxy", async () => {
+    const { app } = testApp();
+    const res = await app.request(
+      "http://127.0.0.1:8790/api/tools/take-home/state",
+      jsonRequest("PUT", { state }, { Host: "127.0.0.1:8790", Origin: "http://127.0.0.1:8790" }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts changes from outside a browser, which send neither header", async () => {
+    const { app } = testApp();
+    expect((await app.request("/api/tools/take-home/state", put({}))).status).toBe(200);
+  });
+
+  it("leaves reads alone", async () => {
+    const { app } = testApp();
+    const res = await app.request("/api/tools/take-home/state", {
+      headers: { "Sec-Fetch-Site": "cross-site" },
+    });
+    expect(res.status).toBe(200);
   });
 });

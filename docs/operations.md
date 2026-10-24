@@ -23,7 +23,10 @@ Without dotfiles, install Node 26, run `npm ci && npm run build && npm start`, a
 The server only listens on `127.0.0.1`. When it starts, it asks Tailscale which login the Mac is
 signed in as, and only answers API requests that Tailscale Serve marks as coming from that login.
 A new machine therefore needs no configuration: sign in to Tailscale, then start the app. After
-switching the Mac to another Tailscale login, restart the app so it picks up the new one. If
+switching the Mac to another Tailscale login, restart the app so it picks up the new one. Changes must
+also come from the app's own pages, sent as JSON: requests that browsers mark as coming from
+another site, including the other apps on the machine, are refused. Behind Tailscale Serve, the
+page's origin is checked against the `X-Forwarded-Host` and `X-Forwarded-Proto` that Serve sets. If
 Tailscale isn't running when the app starts, it exits, and launchd tries again.
 
 ## Data and configuration

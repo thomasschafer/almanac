@@ -15,7 +15,9 @@ async function resetState(page: Page) {
   const presets = await page.request.get("/api/tools/take-home/presets");
   const { presets: list } = (await presets.json()) as { presets: { id: string }[] };
   for (const preset of list) {
-    await page.request.delete(`/api/tools/take-home/presets/${preset.id}`);
+    await page.request.delete(`/api/tools/take-home/presets/${preset.id}`, {
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 

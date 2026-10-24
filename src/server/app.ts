@@ -46,6 +46,42 @@ async function parseBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.
   return result.data;
 }
 
+/** What the checks on where a request came from need of it. */
+interface Incoming {
+  readonly url: string;
+  header(name: string): string | undefined;
+}
+
+/**
+ * The origin the browser sees the app at. Tailscale Serve passes on the Host it was asked for and
+ * also sets X-Forwarded-Host to it, and X-Forwarded-Proto to https, as it serves HTTPS and
+ * forwards plain HTTP. Without Serve, such as in development, the request's own host and scheme
+ * are what the browser used.
+ */
+function appOrigin(req: Incoming): string {
+  const host = req.header("X-Forwarded-Host") ?? req.header("Host");
+  if (host === undefined) throw new HTTPException(400, { message: "Request has no Host" });
+  const proto = req.header("X-Forwarded-Proto") ?? new URL(req.url).protocol.slice(0, -1);
+  return `${proto}://${host}`;
+}
+
+/**
+ * Whether a request could have come from another site's page, which mustn't be able to change
+ * anything here. Browsers say where a request came from in Sec-Fetch-Site, or failing that
+ * Origin. Requests with neither don't come from a page, such as from scripts or tests.
+ */
+function isCrossSite(req: Incoming): boolean {
+  const site = req.header("Sec-Fetch-Site");
+  if (site !== undefined) return site !== "same-origin" && site !== "none";
+  const origin = req.header("Origin");
+  return origin !== undefined && origin !== appOrigin(req);
+}
+
+function isJson(req: Incoming): boolean {
+  const type = req.header("Content-Type");
+  return type?.split(";")[0]?.trim().toLowerCase() === "application/json";
+}
+
 function toolParam(c: Context): ToolId {
   const tool = c.req.param("tool");
   if (tool === undefined || !isToolId(tool)) throw new NotFoundError(`no tool ${String(tool)}`);
@@ -71,6 +107,18 @@ export function createApp(deps: AppDeps): Hono {
   api.use("*", async (c, next) => {
     if (deps.allowedLogin !== null && c.req.header("Tailscale-User-Login") !== deps.allowedLogin) {
       return c.json({ error: "Forbidden" }, 403);
+    }
+    await next();
+    return undefined;
+  });
+
+  // Changes must come from this app's own pages, and as JSON, which another site's page can't
+  // send without asking first.
+  api.use("*", async (c, next) => {
+    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+      if (isCrossSite(c.req)) return c.json({ error: "Cross-site requests aren't allowed" }, 403);
+      if (!isJson(c.req))
+        return c.json({ error: "Requests must be sent as application/json" }, 415);
     }
     await next();
     return undefined;
