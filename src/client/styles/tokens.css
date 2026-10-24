@@ -1,0 +1,98 @@
+/*
+ * Design tokens. Copy is set in a sans-serif and every figure in a monospace, so numbers line up
+ * and read as data. Each tool has one identity colour, used for its icon, chart marks and
+ * focus rings. Status colours are reserved for notices and always come with a label.
+ */
+:root {
+  color-scheme: light;
+
+  --bg: #f6f6f5;
+  --surface: #ffffff;
+  --surface-sunken: #efefed;
+  --ink: #111111;
+  --ink-2: #5d5d5b;
+  --ink-3: #8a8a87;
+  --rule: #e4e4e1;
+  --rule-strong: #d2d2ce;
+  --grid: #ececea;
+  --scrim: rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+  --take-home: #2a78d6;
+  --take-home-ink: #1f63b5;
+
+  /* Categorical series, in fixed order (validated: dataviz reference palette). */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+
+  /* Neutral steps for deductions in breakdowns, darkest first. */
+  --neutral-1: #3b3b3a;
+  --neutral-2: #8f8f8c;
+  --neutral-3: #c9c9c6;
+
+  --status-info: #2a78d6;
+  --status-warning: #b07400;
+  --status-error: #c93636;
+  --warning-tint: rgba(237, 161, 0, 0.12);
+  --error-tint: rgba(201, 54, 54, 0.1);
+  --info-tint: rgba(42, 120, 214, 0.08);
+
+  --radius-s: 6px;
+  --radius: 10px;
+  --radius-l: 14px;
+  --page-x: 16px;
+
+  --font-copy: "Geist Variable", -apple-system, system-ui, "Segoe UI", sans-serif;
+  --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #0c0c0c;
+    --surface: #161616;
+    --surface-sunken: #1f1f1f;
+    --ink: #f2f2f0;
+    --ink-2: #a9a9a5;
+    --ink-3: #7d7d78;
+    --rule: #262626;
+    --rule-strong: #353535;
+    --grid: #222222;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow-pop: 0 0 0 1px #2a2a2a, 0 12px 32px rgba(0, 0, 0, 0.5);
+    --shadow-control: 0 0 0 1px #333333;
+
+    --take-home: #3987e5;
+    --take-home-ink: #6aa6ee;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+
+    --neutral-1: #b4b4b0;
+    --neutral-2: #7a7a76;
+    --neutral-3: #4f4f4c;
+
+    --status-info: #6aa6ee;
+    --status-warning: #e3a72f;
+    --status-error: #f07a7a;
+    --warning-tint: rgba(227, 167, 47, 0.12);
+    --error-tint: rgba(240, 122, 122, 0.12);
+    --info-tint: rgba(106, 166, 238, 0.1);
+  }
+}
+
+@media (min-width: 900px) {
+  :root {
+    --page-x: 32px;
+  }
+}
