@@ -11,7 +11,7 @@ import {
   LoanTotals,
   outcomeSentence,
   ProjectionProblem,
-  totalsUntil,
+  totalsQualifier,
 } from "./LoanChart.tsx";
 import { NotLoaded } from "./NotLoaded.tsx";
 import { Callout } from "./Results.tsx";
@@ -159,7 +159,7 @@ function LoanDetail({
 }) {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const years = byTaxYear(loan.months);
-  const until = totalsUntil([loan]);
+  const until = totalsQualifier([loan]);
   const first = loan.months[0];
   const repaymentsStart = loan.repaymentsStart;
   const months = loan.months.filter(
@@ -293,6 +293,13 @@ function LoanDetail({
           </tbody>
         </table>
       </div>
+      {loan.outcome.kind === "may-be-written-off-at-age" &&
+        loan.outcome.termWriteOff?.appliesTo === "every-loan" && (
+          <p className="panel-note">
+            Whatever's left is written off by {formatMonthYear(loan.outcome.termWriteOff.date)} at
+            the latest.
+          </p>
+        )}
       {loan.outcome.kind === "written-off" && (
         <p className="panel-note">
           The remaining <span className="num">{gbp(loan.outcome.balanceWrittenOff)}</span> is

@@ -1,21 +1,30 @@
 import type { z } from "zod";
-import { takeHomeInputs } from "./take-home/inputs.ts";
+import { storedTakeHomeInputs, takeHomeInputs } from "./take-home/inputs.ts";
 import { storedTakeHomeState, takeHomeState } from "./take-home/state.ts";
 
 /**
- * A tool's schemas. `state` is the shape state is written in, which is all the server accepts.
- * `storedState` reads state as it may have been stored or cached, including older shapes, as the
- * current shape.
+ * A tool's schemas. `state` and `preset` are the shapes they're written in, which is all the
+ * server accepts. `storedState` and `storedPreset` read them as they may have been stored or
+ * cached, including older shapes, as the current shape.
  */
-interface ToolSchemas<S extends z.ZodType, R extends z.ZodType<z.output<S>>, P extends z.ZodType> {
+interface ToolSchemas<
+  S extends z.ZodType,
+  R extends z.ZodType<z.output<S>>,
+  P extends z.ZodType,
+  RP extends z.ZodType<z.output<P>>,
+> {
   readonly state: S;
   readonly storedState: R;
   readonly preset: P;
+  readonly storedPreset: RP;
 }
 
-function toolSchema<S extends z.ZodType, R extends z.ZodType<z.output<S>>, P extends z.ZodType>(
-  schemas: ToolSchemas<S, R, P>,
-): ToolSchemas<S, R, P> {
+function toolSchema<
+  S extends z.ZodType,
+  R extends z.ZodType<z.output<S>>,
+  P extends z.ZodType,
+  RP extends z.ZodType<z.output<P>>,
+>(schemas: ToolSchemas<S, R, P, RP>): ToolSchemas<S, R, P, RP> {
   return schemas;
 }
 
@@ -28,6 +37,7 @@ export const toolSchemas = {
     state: takeHomeState,
     storedState: storedTakeHomeState,
     preset: takeHomeInputs,
+    storedPreset: storedTakeHomeInputs,
   }),
 } as const;
 

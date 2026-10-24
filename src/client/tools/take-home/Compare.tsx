@@ -17,6 +17,12 @@ function loanEnd(projection: StudentLoanProjection): string | null {
           return `Written off ${formatMonthYear(loan.outcome.date)}`;
         case "outstanding":
           return "Not repaid";
+        case "may-be-written-off-at-age":
+          return loan.outcome.repaidBy !== null
+            ? `Repaid ${formatMonthYear(loan.outcome.repaidBy)}, unless written off sooner`
+            : loan.outcome.termWriteOff?.appliesTo === "every-loan"
+              ? `Written off by ${formatMonthYear(loan.outcome.termWriteOff.date)}`
+              : "Unknown";
         case "unknown":
           return loan.outcome.missing === "balance" || loan.outcome.repaidBy === null
             ? "Unknown"

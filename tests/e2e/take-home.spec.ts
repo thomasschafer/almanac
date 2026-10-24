@@ -200,7 +200,7 @@ test("says when repayments start, and when a loan is already repaid", async ({ p
   await saveInputs(page, {
     ...exampleInputs,
     studentLoans: [
-      { plan: "plan1", balance: asPence(0), firstRepaymentYear: 2012 },
+      { plan: "plan1", balance: asPence(0), firstRepaymentYear: 2012, firstPaid: "not-sure" },
       { plan: "plan2", balance: asPence(2_500_000), firstRepaymentYear: 2028 },
     ],
   });
@@ -374,10 +374,20 @@ test("charts every student loan plan at once, each in its own colour", async ({ 
     ...exampleInputs,
     studentLoans: [
       { plan: "plan5", balance: asPence(2_700_000), firstRepaymentYear: 2027 },
-      { plan: "plan1", balance: asPence(800_000), firstRepaymentYear: 2010 },
+      {
+        plan: "plan1",
+        balance: asPence(800_000),
+        firstRepaymentYear: 2010,
+        firstPaid: "on-or-after-cutoff",
+      },
       { plan: "postgraduate", balance: asPence(1_100_000), firstRepaymentYear: 2021 },
       { plan: "plan2", balance: asPence(3_100_000), firstRepaymentYear: 2019 },
-      { plan: "plan4", balance: asPence(1_300_000), firstRepaymentYear: 2016 },
+      {
+        plan: "plan4",
+        balance: asPence(1_300_000),
+        firstRepaymentYear: 2016,
+        firstPaid: "on-or-after-cutoff",
+      },
     ],
   });
   await page.goto("/take-home");
@@ -489,4 +499,82 @@ test("the next £1,000 is worked out across a threshold", async ({ page }) => {
   await expect(panel.getByRole("row", { name: "Income tax" })).toContainText("£500");
   await expect(panel.getByRole("row", { name: "National Insurance" })).toContainText("£20");
   await expect(panel).not.toContainText("%");
+});
+
+test("an older Plan 1 or Plan 4 loan's write-off is conditional until it's known", async ({
+  page,
+}) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(2_000_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    pension: { ...exampleInputs.pension, fromSalary: { kind: "percent", percent: 0 } },
+    studentLoans: [
+      {
+        plan: "plan1",
+        balance: asPence(1_000_000),
+        firstRepaymentYear: 2010,
+        firstPaid: "not-sure",
+      },
+    ],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator(".loan-panel");
+  await expect(panel).toContainText(
+    "Plan 1 isn't repaid within the projection. If it was first paid before 1 September 2006, it's written off when you're 65; if not, in April 2035.",
+  );
+  await expect(panel.locator(".loan-totals")).toContainText(
+    "Repaid to 5 Apr 2086, unless written off sooner",
+  );
+
+  await page.getByRole("button", { name: /More options/ }).click();
+  await page
+    .getByLabel("Plan 1: first loan paid")
+    .selectOption({ label: "On or after 1 September 2006" });
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(panel).toContainText("Plan 1 is written off in April 2035");
+  await expect(panel.locator(".loan-totals")).toContainText("Total repaid");
+  await expect
+    .poll(async () => {
+      const res = await page.request.get("/api/tools/take-home/state");
+      const body = (await res.json()) as { saved: { state: { inputs: TakeHomeInputs } } };
+      return body.saved.state.inputs.studentLoans;
+    })
+    .toEqual([
+      {
+        plan: "plan1",
+        balance: 1_000_000,
+        firstRepaymentYear: 2010,
+        firstPaid: "on-or-after-cutoff",
+      },
+    ]);
+
+  await page.getByRole("button", { name: "Plan 1", exact: true }).click();
+  await page.getByRole("button", { name: "Plan 4", exact: true }).click();
+  await page.getByLabel("Plan 4 balance").fill("30,000");
+  await page.getByLabel("Plan 4 balance").blur();
+  await page.getByRole("button", { name: /More options/ }).click();
+  await expect(page.getByLabel("Plan 4: first loan paid")).toHaveValue("not-sure");
+  await page.getByLabel("Plan 4: year repayments started").fill("2000");
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(panel).toContainText("Plan 4 is written off by April 2030 at the latest");
+  await expect(panel).toContainText(
+    "If it was first paid before 1 August 2007, it's written off when you're 65 or 30 years after the April you were first due to repay, whichever comes first.",
+  );
+
+  // A conditional total isn't compared as a lifetime one.
+  await page.getByRole("button", { name: "What if…" }).click();
+  await setSalary(page, "60,000");
+  await expect(page.locator(".compare-headline")).toContainText("+£");
+  await expect(page.getByText("Student loans repaid in total")).toHaveCount(0);
+  await page.getByRole("button", { name: "Stop comparing" }).click();
+
+  await page.getByRole("link", { name: "Breakdown" }).click();
+  await expect(page.locator(".loan-sentences")).toContainText(
+    "Plan 4 is written off by April 2030 at the latest",
+  );
+  await expect(page.locator(".detail-stats")).toContainText("Repaid, unless written off sooner");
+  await expect(
+    page.getByText("Whatever's left is written off by April 2030 at the latest."),
+  ).toBeVisible();
 });

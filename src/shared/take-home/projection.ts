@@ -1,6 +1,11 @@
 import { asPence, type Pence } from "../money.ts";
 import { itemAt, sum } from "./arithmetic.ts";
-import type { StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
+import {
+  hasOlderTerms,
+  type FirstPaid,
+  type StudentLoanPlan,
+  type TakeHomeInputs,
+} from "./inputs.ts";
 import { payYear, type MonthPay } from "./pay.ts";
 import type {
   LoanMonth,
@@ -19,11 +24,13 @@ import { taxYearStartYearOf, ukDate } from "./rules/review.ts";
 import {
   interestYears,
   monthlyRepaymentThreshold,
+  olderLoanTerms,
   plan2UpperInterestThreshold,
   salarySacrificeNiCap,
   studentLoanPlanRules,
   type InterestRule,
   type InterestYear,
+  type OlderLoanTerms,
   type ThresholdUprating,
 } from "./rules/student-loans.ts";
 import {
@@ -322,7 +329,15 @@ interface LoanState {
   balance: Pence | null;
   /** The tax year repayments are first due in, or null if unknown (taken as already due). */
   readonly firstRepaymentYear: number | null;
+  /** The plan's usual term, counted from the first repayment year, if that's known. */
+  readonly termStartYear: number | null;
+  /** When the projection writes it off: the term, unless the loan may be on older terms. */
   readonly writeOffStartYear: number | null;
+  /** Older terms the loan is, or may be, on. */
+  readonly older: {
+    readonly firstPaid: Exclude<FirstPaid, "on-or-after-cutoff">;
+    readonly terms: OlderLoanTerms;
+  } | null;
   /** Still open: accruing interest, and having repayments taken once they're due. */
   repaying: boolean;
   end:
@@ -362,9 +377,28 @@ function outcomeOf(state: LoanState, horizonEnd: string): LoanOutcome {
   if (state.balance === null) {
     return { kind: "unknown", missing: "balance" };
   }
-  const { end } = state;
+  const { end, older } = state;
   if (end?.kind === "already-repaid") {
     return end;
+  }
+  if (older !== null) {
+    const repaidBy = end?.kind === "repaid" ? end.date : null;
+    const termDate = state.termStartYear === null ? null : taxYearStartDate(state.termStartYear);
+    return {
+      kind: "may-be-written-off-at-age",
+      firstPaid: older.firstPaid,
+      terms: older.terms,
+      firstRepaymentYearKnown: state.firstRepaymentYear !== null,
+      repaidBy,
+      termWriteOff:
+        end?.kind === "written-off"
+          ? { appliesTo: "every-loan", date: end.date }
+          : termDate !== null &&
+              older.firstPaid === "not-sure" &&
+              (repaidBy === null || termDate < repaidBy)
+            ? { appliesTo: "newer-loans", date: termDate }
+            : null,
+    };
   }
   if (state.writeOffStartYear === null) {
     return {
@@ -407,15 +441,23 @@ export function projectStudentLoans(
   const horizonEnd = `${String(lastStartYear + 1)}-04-05`;
 
   const states = inputs.studentLoans.map((loan): LoanState => {
-    const writeOffStartYear =
+    const termStartYear =
       loan.firstRepaymentYear === null
         ? null
         : loan.firstRepaymentYear + studentLoanPlanRules[loan.plan].writeOffYears.value;
+    const older =
+      hasOlderTerms(loan) && loan.firstPaid !== "on-or-after-cutoff"
+        ? { firstPaid: loan.firstPaid, terms: olderLoanTerms[loan.plan].value }
+        : null;
+    // Older terms that write off at an age alone have no term the projection can apply.
+    const writeOffStartYear = older?.terms.writeOff.kind === "at-age" ? null : termStartYear;
     const state: LoanState = {
       plan: loan.plan,
       balance: loan.balance,
       firstRepaymentYear: loan.firstRepaymentYear,
+      termStartYear,
       writeOffStartYear,
+      older,
       repaying: true,
       end: null,
       points: [],

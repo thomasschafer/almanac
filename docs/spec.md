@@ -51,9 +51,10 @@ it leaves the results in view.
 - Basics: salary, bonus, pension contribution from each (with the pension type picked beside
   it: salary sacrifice, net pay or relief at source), and student loan plans with their balances.
 - More options: tax year, Scotland, the bonus month, employer contribution and NI pass-on, the
-  year repayments started (for write-off, or for repayments that haven't started yet), a tax
-  code override, and the projection's assumptions (salary growth and RPI, either of which can be
-  negative).
+  year repayments started (for write-off, or for repayments that haven't started yet), for Plan
+  1 and Plan 4 whether the first loan was paid before the cutoff for older terms (or not sure), a
+  tax code override, and the projection's assumptions (salary growth and RPI, either of which can
+  be negative).
 
 ### What if
 
@@ -117,6 +118,13 @@ only then has repayments taken; an unknown first repayment year is taken as alre
 Until then, Plan 2 adds interest at its rate while studying (RPI + 3%, under the same cap), and
 only moves to the income-linked rate once repayments are due. A balance of 0 is shown as already
 repaid.
+
+Plan 1 and Plan 4 loans first paid before a cutoff (1 September 2006 and 1 August 2007) are
+written off at 65 (Plan 4: at 65 or after 30 years, whichever comes first). The projection can't
+date that, so unless the loan is known to be first paid on or after the cutoff, how it ends is
+conditional: it says when it'd be repaid unless written off sooner, or for Plan 4 the latest
+it's written off, and its totals say they hold unless it's written off sooner. Loans saved
+before this was asked are read as not sure.
 
 Its breakdown page (`/take-home/student-loans`) has a larger chart, what's repaid and added in
 interest each tax year, and a table by tax year that opens out into each month's pay, interest

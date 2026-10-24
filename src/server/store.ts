@@ -39,7 +39,7 @@ function parseState<T extends ToolId>(tool: T, json: string): ToolState<T> {
 }
 
 function parsePreset<T extends ToolId>(tool: T, json: string): PresetState<T> {
-  return toolSchemas[tool].preset.parse(JSON.parse(json)) as PresetState<T>;
+  return toolSchemas[tool].storedPreset.parse(JSON.parse(json)) as PresetState<T>;
 }
 
 function toPreset<T extends ToolId>(tool: T, row: unknown): Preset<T> {

@@ -1,5 +1,6 @@
 import type { Pence } from "../money.ts";
-import type { PensionMethod, StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
+import type { FirstPaid, PensionMethod, StudentLoanPlan, TakeHomeInputs } from "./inputs.ts";
+import type { OlderLoanTerms } from "./rules/student-loans.ts";
 import type { TaxRegime } from "./rules/types.ts";
 
 /** Whether tax is worked out on pay to date (normal) or on each month's pay alone (W1, M1, X). */
@@ -300,7 +301,29 @@ export type LoanOutcome =
       readonly repaidBy: string | null;
     }
   /** Still outstanding at the end of the horizon, with the write-off date beyond it. */
-  | { readonly kind: "outstanding"; readonly horizonEnd: string; readonly balance: Pence };
+  | { readonly kind: "outstanding"; readonly horizonEnd: string; readonly balance: Pence }
+  /**
+   * A Plan 1 or Plan 4 loan that is, or may be, on older terms, which write it off at an age the
+   * projection can't date. How it ends, and so the total repaid, is conditional on that.
+   */
+  | {
+      readonly kind: "may-be-written-off-at-age";
+      readonly firstPaid: Exclude<FirstPaid, "on-or-after-cutoff">;
+      readonly terms: OlderLoanTerms;
+      /** Whether the first repayment year, which the plan's usual term counts from, is known. */
+      readonly firstRepaymentYearKnown: boolean;
+      /** When it'd be repaid if it isn't written off first, or null if not within the horizon. */
+      readonly repaidBy: string | null;
+      /**
+       * The plan's usual term, when it isn't repaid first and the first repayment year is known:
+       * either it applies to every loan on the plan, so the loan is written off by then at the
+       * latest (Plan 4), or it only applies if the loan is on the newer terms (Plan 1, not sure).
+       */
+      readonly termWriteOff:
+        | { readonly appliesTo: "every-loan"; readonly date: string }
+        | { readonly appliesTo: "newer-loans"; readonly date: string }
+        | null;
+    };
 
 export interface LoanProjection {
   readonly plan: StudentLoanPlan;

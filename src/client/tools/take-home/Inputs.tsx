@@ -1,9 +1,14 @@
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { asPence, type Pence } from "../../../shared/money.ts";
 import {
   contribution,
   type Contribution,
+  type FirstPaid,
+  firstPaidOptions,
+  hasOlderTerms,
+  type LoanWithOlderTerms,
+  newStudentLoan,
   type PensionMethod,
   pensionMethods,
   type StudentLoan,
@@ -14,7 +19,10 @@ import {
 } from "../../../shared/take-home/inputs.ts";
 import type { InputIssue } from "../../../shared/take-home/result.ts";
 import { taxYearRegistry } from "../../../shared/take-home/rules/registry.ts";
-import { studentLoanPlanRules } from "../../../shared/take-home/rules/student-loans.ts";
+import {
+  olderLoanTerms,
+  studentLoanPlanRules,
+} from "../../../shared/take-home/rules/student-loans.ts";
 import {
   boundsOf,
   NumberInput,
@@ -24,7 +32,8 @@ import {
 } from "../../ui/NumberInput.tsx";
 import { Chips, Segmented } from "../../ui/Segmented.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
-import { gbp, percent, taxMonthName, taxYearLabel } from "./format.ts";
+import { formatLongDay, gbp, percent, taxMonthName, taxYearLabel } from "./format.ts";
+import { olderLoanWriteOff } from "./LoanChart.tsx";
 
 /** Each percentage field takes what the inputs' schema accepts. */
 const percentFormats = {
@@ -191,7 +200,7 @@ export function Inputs({
           update((i) => ({
             ...i,
             studentLoans: on
-              ? [...i.studentLoans, { plan, balance: null, firstRepaymentYear: null }].sort(
+              ? [...i.studentLoans, newStudentLoan(plan)].sort(
                   (a, b) => studentLoanPlans.indexOf(a.plan) - studentLoanPlans.indexOf(b.plan),
                 )
               : i.studentLoans.filter((l) => l.plan !== plan),
@@ -397,19 +406,23 @@ function MoreOptions({
         </p>
       </div>
       {inputs.studentLoans.map((loan) => (
-        <NumberInput
-          key={loan.plan}
-          label={`${studentLoanPlanRules[loan.plan].name}: year repayments started`}
-          value={loan.firstRepaymentYear}
-          format={yearFormat}
-          nullable
-          decimals={false}
-          placeholder="Such as 2019"
-          hint="The April after you left your course. Loans are written off a set number of years after this."
-          onChange={(firstRepaymentYear) => {
-            updateLoan(update, loan.plan, { firstRepaymentYear });
-          }}
-        />
+        <Fragment key={loan.plan}>
+          <NumberInput
+            label={`${studentLoanPlanRules[loan.plan].name}: year repayments started`}
+            value={loan.firstRepaymentYear}
+            format={yearFormat}
+            nullable
+            decimals={false}
+            placeholder="Such as 2019"
+            hint="The April after you left your course. Loans are written off a set number of years after this."
+            onChange={(firstRepaymentYear) => {
+              updateLoan(update, loan.plan, { firstRepaymentYear });
+            }}
+          />
+          {hasOlderTerms(loan) && (
+            <FirstPaidPicker loan={loan} update={update} baseline={baseline} inputs={inputs} />
+          )}
+        </Fragment>
       ))}
       {inputs.studentLoans.length > 0 && (
         <div className="field-row">
@@ -435,6 +448,69 @@ function MoreOptions({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+const firstPaidLabels: Record<FirstPaid, (cutoff: string) => string> = {
+  "before-cutoff": (cutoff) => `Before ${cutoff}`,
+  "on-or-after-cutoff": (cutoff) => `On or after ${cutoff}`,
+  "not-sure": () => "Not sure",
+};
+
+/** When a Plan 1 or Plan 4 loan was first paid, which decides how it's written off. */
+function FirstPaidPicker({
+  loan,
+  update,
+  baseline,
+  inputs,
+}: {
+  loan: LoanWithOlderTerms;
+  update: Update;
+  baseline: Baseline | null;
+  inputs: TakeHomeInputs;
+}) {
+  const id = useId();
+  const terms = olderLoanTerms[loan.plan].value;
+  const cutoff = formatLongDay(terms.firstPaidBefore);
+  const firstPaidOf = (i: TakeHomeInputs) => {
+    const found = i.studentLoans.find((l) => l.plan === loan.plan);
+    return found !== undefined && hasOlderTerms(found) ? found.firstPaid : null;
+  };
+  const hint = joinHints(
+    `Loans first paid before then are written off ${olderLoanWriteOff(loan.plan, terms)}.`,
+    was(baseline, firstPaidOf, inputs, (firstPaid) =>
+      firstPaid === null ? "no loan" : firstPaidLabels[firstPaid](cutoff).toLowerCase(),
+    ),
+  );
+  return (
+    <div className="field">
+      <label htmlFor={id}>{`${studentLoanPlanRules[loan.plan].name}: first loan paid`}</label>
+      <div className="input select">
+        <select
+          id={id}
+          value={loan.firstPaid}
+          onChange={(e) => {
+            const value = e.currentTarget.value;
+            const firstPaid = firstPaidOptions.find((option) => option === value);
+            if (firstPaid === undefined) throw new Error(`unknown first paid option ${value}`);
+            update((i) => ({
+              ...i,
+              studentLoans: i.studentLoans.map((l) =>
+                l.plan === loan.plan && hasOlderTerms(l) ? { ...l, firstPaid } : l,
+              ),
+            }));
+          }}
+        >
+          {firstPaidOptions.map((option) => (
+            <option key={option} value={option}>
+              {firstPaidLabels[option](cutoff)}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={16} aria-hidden className="input-affix" />
+      </div>
+      <p className="field-hint">{hint}</p>
     </div>
   );
 }

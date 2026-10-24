@@ -1,5 +1,11 @@
 import { fromPounds } from "../money.ts";
-import { takeHomeInputs, type StudentLoanPlan, type TakeHomeInputs } from "./inputs.ts";
+import {
+  plansWithOlderLoans,
+  takeHomeInputs,
+  type FirstPaid,
+  type StudentLoanPlan,
+  type TakeHomeInputs,
+} from "./inputs.ts";
 
 /** Made-up round figures for tests, validated by the real schema. */
 export interface TestInputs {
@@ -15,7 +21,13 @@ export interface TestInputs {
   niPassOnPercent?: number;
   loans?: readonly (
     | StudentLoanPlan
-    | { plan: StudentLoanPlan; balance: number | null; firstRepaymentYear: number | null }
+    | {
+        plan: StudentLoanPlan;
+        balance: number | null;
+        firstRepaymentYear: number | null;
+        /** Plan 1 and Plan 4 only. Defaults to on or after the cutoff, the plans' usual terms. */
+        firstPaid?: FirstPaid;
+      }
   )[];
   taxCode?: string | null;
   salaryGrowthPercent?: number;
@@ -45,15 +57,22 @@ export function testInputs(overrides: TestInputs = {}): TakeHomeInputs {
       employer: contribution(overrides.employer),
       employerNiPassOnPercent: overrides.niPassOnPercent ?? 0,
     },
-    studentLoans: (overrides.loans ?? []).map((loan) =>
-      typeof loan === "string"
-        ? { plan: loan, balance: null, firstRepaymentYear: null }
-        : {
-            plan: loan.plan,
-            balance: loan.balance === null ? null : fromPounds(loan.balance),
-            firstRepaymentYear: loan.firstRepaymentYear,
-          },
-    ),
+    studentLoans: (overrides.loans ?? []).map((loan) => {
+      const { plan, balance, firstRepaymentYear, firstPaid } =
+        typeof loan === "string"
+          ? { plan: loan, balance: null, firstRepaymentYear: null, firstPaid: undefined }
+          : loan;
+      return {
+        plan,
+        balance: balance === null ? null : fromPounds(balance),
+        firstRepaymentYear,
+        ...((plansWithOlderLoans as readonly StudentLoanPlan[]).includes(plan)
+          ? { firstPaid: firstPaid ?? "on-or-after-cutoff" }
+          : firstPaid === undefined
+            ? {}
+            : { firstPaid }),
+      };
+    }),
     taxCode: overrides.taxCode ?? null,
     projection: {
       salaryGrowthPercent: overrides.salaryGrowthPercent ?? 0,

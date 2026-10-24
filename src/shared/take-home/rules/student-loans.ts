@@ -1,5 +1,5 @@
 import { fromPounds as pounds, type Pence } from "../../money.ts";
-import type { StudentLoanPlan } from "../inputs.ts";
+import type { PlanWithOlderLoans, StudentLoanPlan } from "../inputs.ts";
 import { confirmed, percent, provisional, type Rate, type Sourced } from "./types.ts";
 
 /**
@@ -68,7 +68,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
     writeOffYears: confirmed(
       25,
       writeOffPage,
-      "For loans first paid on or after 1 September 2006. Earlier loans are written off at 65.",
+      "For loans first paid on or after 1 September 2006; earlier loans are on older terms.",
     ),
     interest: confirmed(
       { kind: "lower-of-rpi-and-bank-rate", bankRateMargin: percent(1) },
@@ -107,8 +107,7 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
     writeOffYears: confirmed(
       30,
       writeOffPage,
-      "For loans first paid on or after 1 August 2007. Earlier loans are written off at 65 or " +
-        "after 30 years, whichever is first.",
+      "For loans first paid on or after 1 August 2007; earlier loans are on older terms.",
     ),
     interest: confirmed(
       { kind: "lower-of-rpi-and-bank-rate", bankRateMargin: percent(1) },
@@ -147,6 +146,28 @@ export const studentLoanPlanRules: Readonly<Record<StudentLoanPlan, StudentLoanP
       "The regulations set a flat £21,000 with no uprating.",
     ),
   },
+};
+
+/** The write-off terms for Plan 1 and Plan 4 loans first paid before a cutoff date. */
+export interface OlderLoanTerms {
+  /** YYYY-MM-DD: loans first paid before this date are on these terms. */
+  readonly firstPaidBefore: string;
+  readonly writeOff:
+    /** Written off at this age, with no term in years. */
+    | { readonly kind: "at-age"; readonly age: number }
+    /** Written off at this age, or after the plan's usual term if that's sooner. */
+    | { readonly kind: "at-age-or-term"; readonly age: number };
+}
+
+export const olderLoanTerms: Readonly<Record<PlanWithOlderLoans, Sourced<OlderLoanTerms>>> = {
+  plan1: confirmed(
+    { firstPaidBefore: "2006-09-01", writeOff: { kind: "at-age", age: 65 } },
+    writeOffPage,
+  ),
+  plan4: confirmed(
+    { firstPaidBefore: "2007-08-01", writeOff: { kind: "at-age-or-term", age: 65 } },
+    writeOffPage,
+  ),
 };
 
 /**

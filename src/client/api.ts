@@ -39,7 +39,7 @@ function presetSchema(tool: ToolId) {
   return z.object({
     id: z.string(),
     name: z.string(),
-    state: toolSchemas[tool].preset,
+    state: toolSchemas[tool].storedPreset,
     createdAt: z.string(),
     updatedAt: z.string(),
   });

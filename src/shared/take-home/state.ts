@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { takeHomeInputs } from "./inputs.ts";
+import { storedTakeHomeInputs, takeHomeInputs } from "./inputs.ts";
 
 /** A second set of inputs to compare against the current ones. */
 export const whatIf = z.strictObject({
@@ -18,7 +18,10 @@ export type TakeHomeState = z.infer<typeof takeHomeState>;
  * older shapes: a client still writing one would otherwise drop what newer clients save.
  */
 export const storedTakeHomeState = z.union([
-  takeHomeState,
+  takeHomeState.extend({
+    inputs: storedTakeHomeInputs,
+    whatIf: whatIf.extend({ inputs: storedTakeHomeInputs }).nullable(),
+  }),
   // State saved before what-if scenarios existed was just the inputs.
-  takeHomeInputs.transform((inputs): TakeHomeState => ({ inputs, whatIf: null })),
+  storedTakeHomeInputs.transform((inputs): TakeHomeState => ({ inputs, whatIf: null })),
 ]);

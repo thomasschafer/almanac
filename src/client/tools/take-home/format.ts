@@ -78,3 +78,14 @@ export function formatMonthYear(date: string): string {
 export function formatDay(date: string): string {
   return dayMonthYear.format(new Date(`${date}T12:00:00Z`));
 }
+
+const longDay = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** A YYYY-MM-DD date as "1 September 2006". */
+export function formatLongDay(date: string): string {
+  return longDay.format(new Date(`${date}T12:00:00Z`));
+}

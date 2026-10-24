@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fromPounds as pounds } from "../money.ts";
 import { interestRate, projectStudentLoans, uprate } from "./projection.ts";
+import type { FirstPaid } from "./inputs.ts";
 import type { LoanProjection, StudentLoanProjection } from "./result.ts";
 import { taxYearRegistry } from "./rules/registry.ts";
 import { testInputs, type TestInputs } from "./test-inputs.ts";
@@ -153,6 +154,100 @@ describe("write-off", () => {
       balanceWrittenOff: pounds(5_000),
     });
     expect(loan.totalRepaid).toBe(0);
+  });
+});
+
+describe("older Plan 1 and Plan 4 loans", () => {
+  const plan1 = (firstPaid: FirstPaid, salary = 20_000) =>
+    onlyLoan(
+      project({
+        salary,
+        loans: [{ plan: "plan1", balance: 10_000, firstRepaymentYear: 2010, firstPaid }],
+      }),
+    );
+  const plan4 = (firstPaid: FirstPaid, firstRepaymentYear: number | null = 2000) =>
+    onlyLoan(
+      project({
+        salary: 20_000,
+        loans: [{ plan: "plan4", balance: 30_000, firstRepaymentYear, firstPaid }],
+      }),
+    );
+  const plan1Terms = { firstPaidBefore: "2006-09-01", writeOff: { kind: "at-age", age: 65 } };
+  const plan4Terms = {
+    firstPaidBefore: "2007-08-01",
+    writeOff: { kind: "at-age-or-term", age: 65 },
+  };
+
+  it("keep the usual term when first paid on or after the cutoff", () => {
+    expect(plan1("on-or-after-cutoff").outcome).toMatchObject({
+      kind: "written-off",
+      date: "2035-04-06",
+    });
+    expect(plan4("on-or-after-cutoff").outcome).toMatchObject({
+      kind: "written-off",
+      date: "2030-04-06",
+    });
+  });
+
+  it("have no write-off date for a Plan 1 loan first paid before the cutoff", () => {
+    const loan = plan1("before-cutoff");
+    expect(loan.outcome).toEqual({
+      kind: "may-be-written-off-at-age",
+      firstPaid: "before-cutoff",
+      terms: plan1Terms,
+      firstRepaymentYearKnown: true,
+      repaidBy: null,
+      termWriteOff: null,
+    });
+    expect(loan.points.at(-1)?.date).toBe("2086-04-05");
+    expectBalanceAddsUp(loan, 10_000);
+  });
+
+  it("give the usual term as the newer loans' date when not sure", () => {
+    expect(plan1("not-sure").outcome).toEqual({
+      kind: "may-be-written-off-at-age",
+      firstPaid: "not-sure",
+      terms: plan1Terms,
+      firstRepaymentYearKnown: true,
+      repaidBy: null,
+      termWriteOff: { appliesTo: "newer-loans", date: "2035-04-06" },
+    });
+  });
+
+  it("say when it'd be repaid, unless written off first", () => {
+    const loan = plan1("not-sure", 60_000);
+    expect(loan.outcome).toMatchObject({
+      kind: "may-be-written-off-at-age",
+      termWriteOff: null,
+    });
+    if (loan.outcome.kind === "may-be-written-off-at-age") {
+      expect(loan.outcome.repaidBy).toMatch(/^20[23]\d-\d{2}-05$/);
+    }
+  });
+
+  it("write off a Plan 4 loan by the usual term at the latest, as 65 may come first", () => {
+    for (const firstPaid of ["before-cutoff", "not-sure"] as const) {
+      const loan = plan4(firstPaid);
+      expect(loan.outcome).toMatchObject({
+        kind: "may-be-written-off-at-age",
+        firstPaid,
+        terms: plan4Terms,
+        repaidBy: null,
+        termWriteOff: { appliesTo: "every-loan", date: "2030-04-06" },
+      });
+      expect(loan.points.at(-1)?.date).toBe("2030-04-06");
+    }
+    expect(plan4("not-sure", 1995).outcome).toMatchObject({
+      termWriteOff: { appliesTo: "every-loan", date: "2025-04-06" },
+    });
+  });
+
+  it("say when the first repayment year isn't known", () => {
+    expect(plan4("before-cutoff", null).outcome).toMatchObject({
+      kind: "may-be-written-off-at-age",
+      firstRepaymentYearKnown: false,
+      termWriteOff: null,
+    });
   });
 });
 

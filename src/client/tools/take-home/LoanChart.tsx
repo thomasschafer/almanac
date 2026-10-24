@@ -7,7 +7,11 @@ import type {
   LoanProjection,
   StudentLoanProjection,
 } from "../../../shared/take-home/result.ts";
-import { formatDay, formatMonthYear, gbp, taxYearLabel } from "./format.ts";
+import {
+  studentLoanPlanRules,
+  type OlderLoanTerms,
+} from "../../../shared/take-home/rules/student-loans.ts";
+import { formatDay, formatLongDay, formatMonthYear, gbp, taxYearLabel } from "./format.ts";
 
 /** Each plan keeps its colour wherever it's charted, whichever other loans are shown with it. */
 const planColors: Readonly<Record<StudentLoanPlan, string>> = {
@@ -69,6 +73,8 @@ function outcomeOnly(loan: LoanProjection): React.ReactNode {
           to repay in {formatMonthYear(outcome.horizonEnd)}.
         </>
       );
+    case "may-be-written-off-at-age":
+      return <OlderLoanSentence loan={loan} outcome={outcome} />;
     case "unknown":
       return outcome.missing === "balance" ? (
         <>
@@ -88,6 +94,69 @@ function outcomeOnly(loan: LoanProjection): React.ReactNode {
         </>
       );
   }
+}
+
+/** How older loans on a plan are written off: "when you're 65", and so on. */
+export function olderLoanWriteOff(plan: StudentLoanPlan, terms: OlderLoanTerms): string {
+  const { writeOff } = terms;
+  switch (writeOff.kind) {
+    case "at-age":
+      return `when you're ${String(writeOff.age)}`;
+    case "at-age-or-term":
+      return `when you're ${String(writeOff.age)} or ${String(studentLoanPlanRules[plan].writeOffYears.value)} years after the April you were first due to repay, whichever comes first`;
+  }
+}
+
+function OlderLoanSentence({
+  loan,
+  outcome,
+}: {
+  loan: LoanProjection;
+  outcome: Extract<LoanOutcome, { kind: "may-be-written-off-at-age" }>;
+}) {
+  const { terms, firstPaid, repaidBy, termWriteOff } = outcome;
+  const cutoff = formatLongDay(terms.firstPaidBefore);
+  const writeOff = olderLoanWriteOff(loan.plan, terms);
+  const usualTermMatters = terms.writeOff.kind === "at-age-or-term" || firstPaid === "not-sure";
+  return (
+    <>
+      {repaidBy !== null ? (
+        <>
+          <strong>{loan.name}</strong> is repaid by <strong>{formatMonthYear(repaidBy)}</strong>,
+          after <span className="num">{gbp(loan.totalRepaid)}</span> of repayments, unless it's
+          written off sooner.
+        </>
+      ) : termWriteOff?.appliesTo === "every-loan" ? (
+        <>
+          <strong>{loan.name}</strong> is written off by{" "}
+          <strong>{formatMonthYear(termWriteOff.date)}</strong> at the latest, after{" "}
+          <span className="num">{gbp(loan.totalRepaid)}</span> of repayments.
+        </>
+      ) : (
+        <>
+          <strong>{loan.name}</strong> isn't repaid within the projection.
+        </>
+      )}{" "}
+      {firstPaid === "before-cutoff" ? (
+        <>
+          As it was first paid before {cutoff}, it's written off {writeOff}.
+        </>
+      ) : (
+        <>
+          If it was first paid before {cutoff}, it's written off {writeOff}
+          {termWriteOff?.appliesTo === "newer-loans" && (
+            <>
+              ; if not, in <strong>{formatMonthYear(termWriteOff.date)}</strong>
+            </>
+          )}
+          . Say when it was first paid under more options.
+        </>
+      )}
+      {!outcome.firstRepaymentYearKnown && usualTermMatters && (
+        <> Add the year repayments started, under more options, to see when its term ends.</>
+      )}
+    </>
+  );
 }
 
 const PAD = { top: 12, right: 12, bottom: 24, left: 48 };
@@ -331,20 +400,27 @@ export function LoanChart({
 }
 
 /**
- * " to 5 Apr 2086" when any of the loans' ends isn't known within the projection, so totals
- * across them only cover the projection, or "" when they cover each loan's whole life.
+ * What totals across the loans cover, to follow "Repaid" or "Interest added": " to 5 Apr 2086"
+ * when a loan's end isn't known within the projection, so they only cover the projection, and
+ * ", unless written off sooner" when a loan may be written off at an age the projection can't
+ * date. "" when they cover each loan's whole life.
  */
-export function totalsUntil(loans: readonly LoanProjection[]): string {
+export function totalsQualifier(loans: readonly LoanProjection[]): string {
   const open = loans.some(
     ({ outcome }) =>
       outcome.kind === "outstanding" ||
-      (outcome.kind === "unknown" && outcome.missing === "first-repayment-year"),
+      (outcome.kind === "unknown" && outcome.missing === "first-repayment-year") ||
+      (outcome.kind === "may-be-written-off-at-age" &&
+        outcome.repaidBy === null &&
+        outcome.termWriteOff?.appliesTo !== "every-loan"),
   );
+  const conditional = loans.some(({ outcome }) => outcome.kind === "may-be-written-off-at-age");
   const lastMonth = loans
     .flatMap((loan) => loan.months.map((month) => month.date))
     .sort()
     .at(-1);
-  return open && lastMonth !== undefined ? ` to ${formatDay(lastMonth)}` : "";
+  const until = open && lastMonth !== undefined ? ` to ${formatDay(lastMonth)}` : "";
+  return `${until}${conditional ? ", unless written off sooner" : ""}`;
 }
 
 /**
@@ -356,7 +432,7 @@ export function LoanTotals({
 }: {
   projection: Extract<StudentLoanProjection, { status: "ok" }>;
 }) {
-  const until = totalsUntil(projection.loans);
+  const until = totalsQualifier(projection.loans);
   return (
     <dl className="loan-totals">
       <div>
