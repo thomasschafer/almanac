@@ -53,6 +53,12 @@ export function Summary({
             <span className="num">{gbp(range.max)}</span> as tax evens out over the year
           </p>
         )}
+        {normalMonth.incomeTax < 0 && (
+          <p className="summary-note">
+            Including a <span className="num">{gbp(Math.abs(normalMonth.incomeTax))}</span> refund
+            of tax taken earlier in the year
+          </p>
+        )}
       </div>
       <dl className="summary-cells">
         {bonusMonth !== null && (
@@ -111,6 +117,9 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
         ? result.normalMonth
         : (result.bonusMonth ?? result.annual);
 
+  // On a cumulative code, a month can refund tax taken earlier in the year, which adds to
+  // take-home rather than taking from it.
+  const refund = pay.incomeTax < 0 ? Math.abs(pay.incomeTax) : 0;
   const parts = [
     { id: "take-home", label: "Take-home", amount: pay.netPay, color: "var(--series-1)" },
     { id: "pension", label: "Your pension", amount: pensionFromPay(pay), color: "var(--series-3)" },
@@ -129,6 +138,11 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
     },
   ].filter((part) => part.amount > 0);
   const total = parts.reduce((sum, part) => sum + part.amount, 0);
+  if (total !== pay.grossPay + refund) {
+    throw new Error("the breakdown doesn't add up to gross pay");
+  }
+  const shareOfGross = (amount: number) =>
+    pay.grossPay > 0 ? percent((amount / pay.grossPay) * 100) : "—";
   const employerSide = pay.pension.total - pensionFromPay(pay);
 
   return (
@@ -187,11 +201,27 @@ export function Breakdown({ result }: { result: TakeHomeCalculation }) {
                     {part.label}
                   </td>
                   <td className="num">{gbp(part.amount)}</td>
-                  <td className="num muted">{percent((part.amount / total) * 100)}</td>
+                  <td className="num muted">{shareOfGross(part.amount)}</td>
                 </tr>
               ))}
+              {refund > 0 && (
+                <tr className="refund-row">
+                  <td>
+                    <span className="swatch swatch-empty" />
+                    Tax refund
+                  </td>
+                  <td className="num">{gbp(-refund)}</td>
+                  <td className="num muted">{shareOfGross(-refund)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
+          {refund > 0 && (
+            <p className="panel-note">
+              This month refunds <span className="num">{gbp(refund)}</span> of tax taken earlier in
+              the year, so take-home and deductions come to more than the gross pay.
+            </p>
+          )}
           {employerSide > 0 && (
             <p className="panel-note">
               {result.annual.pension.method === "relief-at-source"

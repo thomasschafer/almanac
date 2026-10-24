@@ -200,3 +200,25 @@ test("says when repayments start, and when a loan is already repaid", async ({ p
   await expect(page.getByText("Student loan repayments haven't started yet")).toBeVisible();
   await expect(page.getByText(/Plan 2 repayments start on 6 April 2028/)).toBeVisible();
 });
+
+test("a month that refunds tax shows the refund, so the breakdown adds up", async ({ page }) => {
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(2_000_000),
+    bonus: { amount: asPence(3_000_000), month: 1 },
+    pension: {
+      ...exampleInputs.pension,
+      fromSalary: { kind: "percent", percent: 0 },
+      fromBonus: { kind: "percent", percent: 0 },
+    },
+    studentLoans: [],
+  });
+  await page.goto("/take-home");
+  await expect(page.locator(".summary")).toContainText("refund of tax taken earlier in the year");
+  const breakdown = page.locator("section").filter({ has: page.locator("#breakdown-heading") });
+  await breakdown.getByRole("radio", { name: "Month" }).click();
+  const refund = breakdown.locator(".refund-row");
+  await expect(refund).toContainText("Tax refund");
+  await expect(refund).toContainText("-£381");
+  await expect(breakdown).toContainText("come to more than the gross pay");
+});

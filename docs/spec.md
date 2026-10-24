@@ -75,8 +75,11 @@ by 12:
 - Amounts are whole pence and rounded as HMRC payroll does (student loan deductions round down
   to the pound).
 
-Results show a normal month, the bonus month, and the year, with the breakdown of where the
-money goes. They also flag:
+Results show a normal month (the most common net pay outside the bonus month, earliest on a
+tie), the bonus month, and the year, with the breakdown of where the money goes. On a cumulative
+code, months after a large bonus can refund tax taken earlier in the year: the normal month then
+says it includes a refund, and the breakdown shows the refund as its own line, so the parts still
+add up to the gross pay. They also flag:
 
 - where the personal allowance is being withdrawn (between £100,000 and £125,140 of adjusted net
   income in 2026/27), the effective rate that leaves (60%, or 67.5% on Scottish rates), and how
