@@ -1,37 +1,61 @@
 import { type ReactNode, useId, useState } from "react";
+import type { z } from "zod";
 import { asPence, type Pence } from "../../shared/money.ts";
 
 interface Format<T> {
   /** Turns typed text into a value, or null if it isn't one (yet). */
   parse: (text: string) => T | null;
   format: (value: T) => string;
+  /** Whether it takes values below 0, which need a keyboard with a minus sign. */
+  negative: boolean;
 }
 
 const grouped = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
-function cleanNumber(text: string): number | null {
-  const cleaned = text.replace(/[£,\s%]/g, "");
-  if (cleaned === "" || !/^\d*\.?\d*$/.test(cleaned) || cleaned === ".") return null;
+/** Reads a typed number, ignoring currency, grouping and percent signs. */
+function cleanNumber(text: string, { negative }: { negative: boolean }): number | null {
+  // Phones can type a minus sign as the Unicode one.
+  const cleaned = text.replace(/[£,\s%]/g, "").replace(/^\u2212/, "-");
+  const pattern = negative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/;
+  if (!pattern.test(cleaned) || !/\d/.test(cleaned)) return null;
   const value = Number(cleaned);
   return Number.isFinite(value) ? value : null;
 }
 
 export const poundsFormat: Format<Pence> = {
   parse: (text) => {
-    const pounds = cleanNumber(text);
+    const pounds = cleanNumber(text, { negative: false });
     if (pounds === null || pounds > 100_000_000) return null;
     return asPence(Math.round(pounds * 100));
   },
   format: (pence) => grouped.format(pence / 100),
+  negative: false,
 };
 
-export function percentFormat(max: number): Format<number> {
+export interface Bounds {
+  readonly min: number;
+  readonly max: number;
+}
+
+/** The bounds a schema puts on a number, so a field takes exactly what the schema accepts. */
+export function boundsOf(schema: z.ZodNumber): Bounds {
+  const { minValue: min, maxValue: max } = schema;
+  if (min === null || max === null || !Number.isFinite(min) || !Number.isFinite(max)) {
+    throw new Error("a number field needs a schema with a minimum and a maximum");
+  }
+  return { min, max };
+}
+
+export function percentFormat({ min, max }: Bounds): Format<number> {
+  if (min > max) throw new Error(`percentages can't run from ${String(min)} to ${String(max)}`);
+  const negative = min < 0;
   return {
     parse: (text) => {
-      const value = cleanNumber(text);
-      return value === null || value > max ? null : value;
+      const value = cleanNumber(text, { negative });
+      return value === null || value < min || value > max ? null : value;
     },
     format: (value) => grouped.format(value),
+    negative,
   };
 }
 
@@ -41,6 +65,7 @@ export const yearFormat: Format<number> = {
     return /^\d{4}$/.test(text.trim()) && value >= 1990 && value <= 2100 ? value : null;
   },
   format: (value) => String(value),
+  negative: false,
 };
 
 /** What clearing the field means. */
@@ -116,7 +141,8 @@ export function NumberInput<T>({
         <input
           id={id}
           className="num"
-          inputMode={decimals ? "decimal" : "numeric"}
+          // Phones' number pads have no minus sign, so fields that take one get a full keyboard.
+          inputMode={format.negative ? "text" : decimals ? "decimal" : "numeric"}
           autoComplete="off"
           enterKeyHint="done"
           placeholder={placeholder}

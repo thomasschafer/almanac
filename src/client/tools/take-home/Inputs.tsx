@@ -2,21 +2,37 @@ import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useId, useState } from "react";
 import { asPence, type Pence } from "../../../shared/money.ts";
 import {
+  contribution,
   type Contribution,
   type PensionMethod,
   pensionMethods,
   type StudentLoan,
   type StudentLoanPlan,
   studentLoanPlans,
+  takeHomeInputs,
   type TakeHomeInputs,
 } from "../../../shared/take-home/inputs.ts";
 import type { InputIssue } from "../../../shared/take-home/result.ts";
 import { taxYearRegistry } from "../../../shared/take-home/rules/registry.ts";
 import { studentLoanPlanRules } from "../../../shared/take-home/rules/student-loans.ts";
-import { NumberInput, percentFormat, poundsFormat, yearFormat } from "../../ui/NumberInput.tsx";
+import {
+  boundsOf,
+  NumberInput,
+  percentFormat,
+  poundsFormat,
+  yearFormat,
+} from "../../ui/NumberInput.tsx";
 import { Chips, Segmented } from "../../ui/Segmented.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { gbp, percent, taxMonthName, taxYearLabel } from "./format.ts";
+
+/** Each percentage field takes what the inputs' schema accepts. */
+const percentFormats = {
+  contribution: percentFormat(boundsOf(contribution.options[0].shape.percent)),
+  niPassOn: percentFormat(boundsOf(takeHomeInputs.shape.pension.shape.employerNiPassOnPercent)),
+  salaryGrowth: percentFormat(boundsOf(takeHomeInputs.shape.projection.shape.salaryGrowthPercent)),
+  rpi: percentFormat(boundsOf(takeHomeInputs.shape.projection.shape.rpiPercent)),
+};
 
 type Update = (update: (inputs: TakeHomeInputs) => TakeHomeInputs) => void;
 
@@ -349,7 +365,7 @@ function MoreOptions({
           label="Employer's NI saving passed on"
           suffix="%"
           value={inputs.pension.employerNiPassOnPercent}
-          format={percentFormat(100)}
+          format={percentFormats.niPassOn}
           emptyValue={0}
           hint="Some employers add part of the NI they save on your sacrifice to your pension."
           onChange={(employerNiPassOnPercent) => {
@@ -401,7 +417,7 @@ function MoreOptions({
             label="Pay rises, a year"
             suffix="%"
             value={inputs.projection.salaryGrowthPercent}
-            format={percentFormat(50)}
+            format={percentFormats.salaryGrowth}
             emptyValue={0}
             onChange={(salaryGrowthPercent) => {
               update((i) => ({ ...i, projection: { ...i.projection, salaryGrowthPercent } }));
@@ -411,7 +427,7 @@ function MoreOptions({
             label="Inflation (RPI), a year"
             suffix="%"
             value={inputs.projection.rpiPercent}
-            format={percentFormat(30)}
+            format={percentFormats.rpi}
             emptyValue={0}
             onChange={(rpiPercent) => {
               update((i) => ({ ...i, projection: { ...i.projection, rpiPercent } }));
@@ -498,7 +514,7 @@ function ContributionInput({
       labelAccessory={accessory}
       suffix={`% of ${baseName}`}
       value={value.percent}
-      format={percentFormat(100)}
+      format={percentFormats.contribution}
       emptyValue={0}
       hint={hint}
       trailing={unitToggle}

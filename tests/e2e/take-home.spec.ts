@@ -400,3 +400,29 @@ test("renaming a preset keeps figures another device saved to it", async ({ page
   };
   expect(presets.map((p) => [p.name, p.state.salary])).toEqual([["Second offer", 6_300_000]]);
 });
+
+test("pay rises can be negative, for a projection where pay falls", async ({ page }) => {
+  await page.goto("/take-home");
+  await page.getByRole("button", { name: /More options/ }).click();
+  const growth = page.getByLabel("Pay rises, a year");
+  await growth.fill("-2.5");
+  await expect(growth).toHaveAttribute("aria-invalid", "false");
+  await growth.blur();
+  await expect(growth).toHaveValue("-2.5");
+  await expect
+    .poll(async () => {
+      const res = await page.request.get("/api/tools/take-home/state");
+      const body = (await res.json()) as { saved: { state: { inputs: TakeHomeInputs } } };
+      return body.saved.state.inputs.projection.salaryGrowthPercent;
+    })
+    .toBe(-2.5);
+
+  await page.reload();
+  await page.getByRole("button", { name: /More options/ }).click();
+  await expect(page.getByLabel("Pay rises, a year")).toHaveValue("-2.5");
+
+  const pension = page.getByLabel("Pension, sacrificed from salary", { exact: true });
+  await page.getByRole("button", { name: "Done" }).click();
+  await pension.fill("-5");
+  await expect(pension).toHaveAttribute("aria-invalid", "true");
+});

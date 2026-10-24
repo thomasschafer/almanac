@@ -52,7 +52,8 @@ it leaves the results in view.
   it: salary sacrifice, net pay or relief at source), and student loan plans with their balances.
 - More options: tax year, Scotland, the bonus month, employer contribution and NI pass-on, the
   year repayments started (for write-off, or for repayments that haven't started yet), a tax
-  code override, and the projection's assumptions (salary growth, RPI).
+  code override, and the projection's assumptions (salary growth and RPI, either of which can be
+  negative).
 
 ### What if
 
