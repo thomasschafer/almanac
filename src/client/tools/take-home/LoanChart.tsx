@@ -15,8 +15,9 @@ import { formatDay, formatLongDay, formatMonthYear, gbp, taxYearLabel } from "./
 
 /** Each plan keeps its colour wherever it's charted, whichever other loans are shown with it. */
 const planColors: Readonly<Record<StudentLoanPlan, string>> = {
-  plan1: "var(--series-1)",
-  plan2: "var(--series-2)",
+  // Plan 2 is the most common, so a lone Plan 2 loan is drawn in the tool's own colour.
+  plan2: "var(--series-1)",
+  plan1: "var(--series-2)",
   plan4: "var(--series-3)",
   plan5: "var(--series-4)",
   postgraduate: "var(--series-5)",

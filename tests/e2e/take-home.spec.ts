@@ -398,7 +398,7 @@ test("charts every student loan plan at once, each in its own colour", async ({ 
     elements.map((element) => (element as unknown as { style: { stroke: string } }).style.stroke),
   );
   // Colours follow the plan, from Plan 1 to Postgraduate, not the order the loans are in.
-  expect(strokes).toEqual([4, 1, 5, 2, 3].map((n) => `var(--series-${String(n)})`));
+  expect(strokes).toEqual([4, 2, 5, 1, 3].map((n) => `var(--series-${String(n)})`));
   await expect(panel.locator(".chart-legend")).toContainText("Postgraduate");
 
   await page.getByRole("link", { name: "Breakdown" }).click();
