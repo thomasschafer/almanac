@@ -617,3 +617,67 @@ test("no page is wider than the screen, however long a preset's name", async ({ 
   await page.goto("/take-home/student-loans");
   await expectFits();
 });
+
+test("shows what an edit changes while it's made", async ({ page }) => {
+  await page.goto("/take-home");
+  const note = page.locator(".freshness");
+  const salary = page.getByLabel("Salary", { exact: true });
+  await salary.focus();
+  await expect(note).toHaveCount(0);
+
+  await salary.fill("120000");
+  await expect(hero(page)).toContainText("£5,368");
+  await expect(note).toHaveText("+£621 a month · +£7,458 a year");
+
+  // Picking another field starts a new edit, measured from the figures as they are now. A
+  // loan's balance doesn't change what's repaid each month.
+  const balance = page.getByLabel("Plan 2 balance");
+  await balance.focus();
+  await expect(note).toHaveCount(0);
+  await balance.fill("30000");
+  await expect(note).toHaveText("No change to take-home");
+});
+
+test("says the figures are out of date while a field isn't valid", async ({ page }) => {
+  await page.goto("/take-home");
+  const pension = page.getByRole("textbox", { name: "Pension, sacrificed from salary" });
+  await pension.fill("150");
+  await expect(page.getByText("Enter a percentage from 0 to 100")).toBeVisible();
+  await expect(page.locator(".freshness")).toHaveText(
+    "Not updated until Pension, sacrificed from salary is valid",
+  );
+  await expect(page.locator(".summary")).toHaveClass(/stale/);
+
+  // Leaving the field puts back the last valid value, which the figures match.
+  await pension.blur();
+  await expect(pension).toHaveValue("6");
+  await expect(page.locator(".freshness.stale")).toHaveCount(0);
+  await expect(page.locator(".summary")).not.toHaveClass(/stale/);
+});
+
+test("pins the figures to the top of a phone once the main one scrolls away", async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto("/take-home");
+  const pinned = page.locator(".sticky-summary");
+  await expect(pinned).toHaveAttribute("aria-hidden", "true");
+
+  const pension = page.getByRole("textbox", { name: "Pension, sacrificed from salary" });
+  // Bring the field to the middle of the screen, which scrolls the main figure away on a phone.
+  await pension.evaluate((element) => {
+    (element as unknown as { scrollIntoView: (options: object) => void }).scrollIntoView({
+      block: "center",
+    });
+  });
+  await pension.fill("8");
+
+  if (isMobile) {
+    await expect(pinned).toHaveAttribute("aria-hidden", "false");
+    await expect(pinned).toBeInViewport();
+    await expect(pinned.locator(".sticky-note")).toHaveText("−£78 a month · −£934 a year");
+  } else {
+    // On a laptop the main figure stays beside the inputs, so there's nothing to pin.
+    await expect(pinned).toBeHidden();
+  }
+});

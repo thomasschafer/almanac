@@ -14,7 +14,7 @@ import { Sheet } from "../../ui/Sheet.tsx";
 
 export type TakeHomePreset = Preset<"take-home">;
 
-export function samePreset(a: TakeHomeInputs, b: TakeHomeInputs): boolean {
+export function sameInputs(a: TakeHomeInputs, b: TakeHomeInputs): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -71,7 +71,7 @@ export function PresetsButton({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const active = presets?.find((p) => p.id === activeId) ?? null;
-  const modified = active !== null && !samePreset(active.state, inputs);
+  const modified = active !== null && !sameInputs(active.state, inputs);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);

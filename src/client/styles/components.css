@@ -789,14 +789,12 @@
   top: 0;
   right: 0;
   left: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 10px) var(--page-x) 10px;
+  display: grid;
+  gap: 4px;
+  padding: calc(env(safe-area-inset-top) + 10px) calc(var(--page-x) + env(safe-area-inset-right))
+    10px calc(var(--page-x) + env(safe-area-inset-left));
   border-bottom: 1px solid var(--rule);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(18px);
-  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  background: var(--bg);
   font-size: 15px;
   transform: translateY(-100%);
   transition: transform 180ms var(--ease);
@@ -806,17 +804,89 @@
   transform: none;
 }
 
+.sticky-figures {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.sticky-figure {
+  display: grid;
+}
+
+.sticky-figure.main {
+  flex: 1;
+}
+
 .sticky-label {
   color: var(--ink-3);
   font-size: 12px;
 }
 
-.sticky-label:not(:first-child) {
-  margin-left: 8px;
+.sticky-value {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
-.sticky-figure {
+.sticky-figure.main .sticky-value {
+  font-size: 26px;
   font-weight: 600;
+}
+
+.sticky-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+
+/* What the edit in progress changed, or that the figures are waiting for a valid value. */
+
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.freshness.change,
+.sticky-note.change {
+  color: var(--take-home-ink);
+  font-weight: 600;
+}
+
+.freshness.change {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--take-home) 14%, transparent);
+}
+
+.freshness.stale,
+.sticky-note.stale {
+  color: var(--status-error);
+  font-weight: 500;
+}
+
+.summary .hero-figure,
+.summary .summary-cells,
+.sticky-figures,
+.stale-dims {
+  transition: opacity 150ms var(--ease);
+}
+
+.summary.stale .hero-figure,
+.summary.stale .summary-cells,
+.sticky-summary.stale .sticky-figures,
+.stale-dims.stale {
+  opacity: 0.35;
+}
+
+.stale-dims {
+  display: grid;
+  gap: 16px;
+  align-content: start;
 }
 
 @media (min-width: 900px) {

@@ -56,6 +56,14 @@ it leaves the results in view.
   tax code override, and the projection's assumptions (salary growth and RPI, either of which can
   be negative).
 
+Results are worked out again as each keystroke makes a valid value; there's nothing to submit.
+An empty field is 0, except a loan's balance or the year its repayments started, where empty
+means not known: repayments still come out of pay, but when the loan ends can't be worked out.
+While a field is being edited, the summary shows how take-home has changed since it was picked,
+and keeps showing it for a few seconds after leaving it. While what's typed isn't a valid value,
+the field says what it takes, and the results are dimmed and say they're waiting for it rather
+than looking current. Leaving the field puts back its last valid value.
+
 ### What if
 
 A second scenario to compare against the current figures, such as a pay rise, a different

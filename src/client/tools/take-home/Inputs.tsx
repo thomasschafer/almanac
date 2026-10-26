@@ -216,11 +216,16 @@ export function Inputs({
           format={poundsFormat}
           nullable
           placeholder="To see when it's repaid"
-          hint={was(
-            baseline,
-            (i) => i.studentLoans.find((l) => l.plan === loan.plan)?.balance ?? null,
-            inputs,
-            (balance) => (balance === null ? "not set" : gbp(balance)),
+          hint={joinHints(
+            loan.balance === null
+              ? "Optional: repayments come out of your pay either way. A balance of 0 means it's repaid."
+              : undefined,
+            was(
+              baseline,
+              (i) => i.studentLoans.find((l) => l.plan === loan.plan)?.balance ?? null,
+              inputs,
+              (balance) => (balance === null ? "not set" : gbp(balance)),
+            ),
           )}
           onChange={(balance) => {
             updateLoan(update, loan.plan, { balance });

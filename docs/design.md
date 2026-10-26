@@ -29,7 +29,10 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
 - The notification drawer collects notices from every tool. Warnings and info can be dismissed;
   errors, and warnings about edits that could be lost, stay until fixed.
 - On a laptop, a tool's inputs sit in a sticky column on the left with results on the right. On a
-  phone they stack, with a slim summary pinned to the top once the main figure scrolls away.
+  phone they stack, with a summary pinned to the top once the main figure scrolls away, so the
+  figures stay in view while editing.
+- Results never quietly show figures that don't match what's typed. Live feedback while editing
+  uses the tool's colour; figures waiting on an invalid field are dimmed, with a status note.
 
 ## Adding a tool
 

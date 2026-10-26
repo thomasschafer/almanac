@@ -1,6 +1,7 @@
 import { type ReactNode, useId, useState } from "react";
 import type { z } from "zod";
 import { asPence, type Pence } from "../../shared/money.ts";
+import { useReportInvalid } from "./invalid-fields.tsx";
 
 interface Format<T> {
   /** Turns typed text into a value, or null if it isn't one (yet). */
@@ -8,9 +9,13 @@ interface Format<T> {
   format: (value: T) => string;
   /** Whether it takes values below 0, which need a keyboard with a minus sign. */
   negative: boolean;
+  /** What it takes, shown while the text isn't one. */
+  expects: string;
 }
 
 const grouped = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+
+const MAX_POUNDS = 100_000_000;
 
 /** Reads a typed number, ignoring currency, grouping and percent signs. */
 function cleanNumber(text: string, { negative }: { negative: boolean }): number | null {
@@ -25,11 +30,12 @@ function cleanNumber(text: string, { negative }: { negative: boolean }): number 
 export const poundsFormat: Format<Pence> = {
   parse: (text) => {
     const pounds = cleanNumber(text, { negative: false });
-    if (pounds === null || pounds > 100_000_000) return null;
+    if (pounds === null || pounds > MAX_POUNDS) return null;
     return asPence(Math.round(pounds * 100));
   },
   format: (pence) => grouped.format(pence / 100),
   negative: false,
+  expects: `Enter an amount in pounds, up to £${grouped.format(MAX_POUNDS)}`,
 };
 
 export interface Bounds {
@@ -56,16 +62,20 @@ export function percentFormat({ min, max }: Bounds): Format<number> {
     },
     format: (value) => grouped.format(value),
     negative,
+    expects: `Enter a percentage from ${grouped.format(min)} to ${grouped.format(max)}`,
   };
 }
+
+const YEARS = { min: 1990, max: 2100 } as const;
 
 export const yearFormat: Format<number> = {
   parse: (text) => {
     const value = Number(text.trim());
-    return /^\d{4}$/.test(text.trim()) && value >= 1990 && value <= 2100 ? value : null;
+    return /^\d{4}$/.test(text.trim()) && value >= YEARS.min && value <= YEARS.max ? value : null;
   },
   format: (value) => String(value),
   negative: false,
+  expects: `Enter a year from ${String(YEARS.min)} to ${String(YEARS.max)}`,
 };
 
 /** What clearing the field means. */
@@ -93,7 +103,8 @@ function parseDraft<T>(text: string, format: Format<T>, empty: Empty<T>): Parsed
 
 /**
  * A numeric text field that keeps whatever is typed while it has focus, only reporting values
- * that parse, and tidies the text when it loses focus.
+ * that parse, and tidies the text when it loses focus. While the text isn't a valid value it
+ * says what it takes, and tells the page, whose results still reflect the last valid value.
  */
 export function NumberInput<T>({
   label,
@@ -125,6 +136,8 @@ export function NumberInput<T>({
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? (value === null ? "" : format.format(value));
   const invalid = draft !== null && parseDraft(draft, format, empty).kind === "invalid";
+  useReportInvalid(id, label, invalid);
+  const shownHint = invalid ? format.expects : hint;
 
   return (
     <div className="field">
@@ -148,7 +161,7 @@ export function NumberInput<T>({
           placeholder={placeholder}
           value={shown}
           aria-invalid={invalid}
-          aria-describedby={hint === undefined ? undefined : `${id}-hint`}
+          aria-describedby={shownHint === undefined ? undefined : `${id}-hint`}
           onFocus={(e) => {
             setDraft(shown);
             e.currentTarget.select();
@@ -170,9 +183,9 @@ export function NumberInput<T>({
         {suffix !== undefined && <span className="input-affix">{suffix}</span>}
         {trailing}
       </div>
-      {hint !== undefined && (
+      {shownHint !== undefined && (
         <p id={`${id}-hint`} className="field-hint">
-          {hint}
+          {shownHint}
         </p>
       )}
     </div>

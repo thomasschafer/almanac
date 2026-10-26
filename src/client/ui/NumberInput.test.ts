@@ -31,6 +31,10 @@ describe("percentages", () => {
     expect(pension.negative).toBe(false);
   });
 
+  it("say what they take", () => {
+    expect(growth.expects).toBe("Enter a percentage from -20 to 50");
+  });
+
   it("refuse bounds the wrong way round", () => {
     expect(() => percentFormat({ min: 10, max: 0 })).toThrow();
   });

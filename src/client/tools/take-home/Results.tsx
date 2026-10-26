@@ -1,5 +1,5 @@
-import { AlertTriangle, Info, OctagonAlert } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, AlertTriangle, Info, OctagonAlert } from "lucide-react";
+import { type Ref, useEffect, useState } from "react";
 import type { Pence } from "../../../shared/money.ts";
 import type {
   InputIssue,
@@ -10,7 +10,67 @@ import type {
 } from "../../../shared/take-home/result.ts";
 import { studentLoanPlanRules } from "../../../shared/take-home/rules/student-loans.ts";
 import { Segmented } from "../../ui/Segmented.tsx";
-import { gbp, gbpExact, percent, taxMonthName, taxMonthShort, taxYearLabel } from "./format.ts";
+import {
+  gbp,
+  gbpChange,
+  gbpExact,
+  percent,
+  taxMonthName,
+  taxMonthShort,
+  taxYearLabel,
+} from "./format.ts";
+
+/** How take-home has moved since the field being edited was picked. */
+export interface EditChange {
+  month: number;
+  year: number;
+}
+
+/** Whether the figures shown match what's typed. */
+export type Freshness =
+  /** They do, with the change made by the edit in progress, if there is one. */
+  | { kind: "current"; change: EditChange | null }
+  /** These fields hold text that isn't a valid value, so the figures are from before it. */
+  | { kind: "stale"; fields: readonly string[] };
+
+const fieldList = new Intl.ListFormat("en-GB", { type: "conjunction" });
+
+function staleMessage(fields: readonly string[]): string {
+  return `Not updated until ${fieldList.format(fields)} ${fields.length === 1 ? "is" : "are"} valid`;
+}
+
+/** What an edit changed: "+£52 a month · +£624 a year", or "No change to take-home". */
+function ChangeText({ change }: { change: EditChange }) {
+  const parts = [
+    { amount: gbpChange(change.month), per: "a month" },
+    { amount: gbpChange(change.year), per: "a year" },
+  ].filter((part) => part.amount !== "£0");
+  if (parts.length === 0) return <>No change to take-home</>;
+  return parts.map((part, i) => (
+    <span key={part.per}>
+      {i > 0 && " · "}
+      <span className="num">{part.amount}</span> {part.per}
+    </span>
+  ));
+}
+
+/** Says what the edit in progress did, or that the figures are waiting for a valid value. */
+function FreshnessNote({ freshness }: { freshness: Freshness }) {
+  if (freshness.kind === "stale") {
+    return (
+      <p className="freshness stale" role="status">
+        <AlertCircle size={14} aria-hidden />
+        {staleMessage(freshness.fields)}
+      </p>
+    );
+  }
+  if (freshness.change === null) return null;
+  return (
+    <p className="freshness change" role="status">
+      <ChangeText change={freshness.change} />
+    </p>
+  );
+}
 
 /** Money you pay into your pension out of your pay, whatever the method. */
 export function pensionFromPay(pay: PayBreakdown): number {
@@ -36,24 +96,33 @@ function Pounds({ amount, className }: { amount: Pence | number; className?: str
 export function Summary({
   result,
   scenarioName,
+  freshness,
+  figureRef,
 }: {
   result: TakeHomeCalculation;
   /** Which scenario this is, when comparing. */
   scenarioName: string | null;
+  freshness: Freshness;
+  /** Gets the main figure, to tell when it's scrolled out of view. */
+  figureRef: Ref<HTMLParagraphElement>;
 }) {
   const { normalMonth, bonusMonth, annual, nonBonusNetPayRange: range } = result;
   const varies = range.max - range.min >= 100;
   const claimable = reliefToClaim(result);
   return (
-    <section className="panel summary" aria-label="Take-home pay">
+    <section
+      className={`panel summary${freshness.kind === "stale" ? " stale" : ""}`}
+      aria-label="Take-home pay"
+    >
       <div className="summary-main">
         <p className="kicker">
           Take-home, a normal month
           {scenarioName !== null && <span className="scenario-tag">{scenarioName}</span>}
         </p>
-        <p className="hero-figure">
+        <p className="hero-figure" ref={figureRef}>
           <Pounds amount={normalMonth.netPay} />
         </p>
+        <FreshnessNote freshness={freshness} />
         {varies && (
           <p className="summary-note">
             Varies from <span className="num">{gbp(range.min)}</span> to{" "}
@@ -93,28 +162,91 @@ export function Summary({
   );
 }
 
-/** A slim summary that stays at the top of a phone screen while the inputs are edited. */
+/** A summary that stays at the top of a phone screen while the inputs are edited. */
 export function StickySummary({
   result,
   visible,
+  freshness,
 }: {
   result: TakeHomeCalculation;
   visible: boolean;
+  freshness: Freshness;
 }) {
+  const top = useVisibleTop();
+  const change = freshness.kind === "current" ? freshness.change : null;
   return (
-    <div className={`sticky-summary${visible ? " visible" : ""}`} aria-hidden={!visible}>
-      <span className="sticky-label">A month</span>
-      <span className="num sticky-figure">{gbp(result.normalMonth.netPay)}</span>
-      {result.bonusMonth !== null && (
-        <>
-          <span className="sticky-label">{taxMonthShort(result.bonusMonth.month)}</span>
-          <span className="num">{gbp(result.bonusMonth.netPay)}</span>
-        </>
+    <div
+      className={`sticky-summary${visible ? " visible" : ""}${freshness.kind === "stale" ? " stale" : ""}`}
+      style={{ top }}
+      aria-hidden={!visible}
+    >
+      <div className="sticky-figures">
+        <StickyFigure label="A month" amount={result.normalMonth.netPay} main />
+        {result.bonusMonth !== null && (
+          <StickyFigure
+            label={taxMonthShort(result.bonusMonth.month)}
+            amount={result.bonusMonth.netPay}
+          />
+        )}
+        <StickyFigure label="Year" amount={result.annual.netPay} />
+      </div>
+      {freshness.kind === "stale" ? (
+        <p className="sticky-note stale">
+          <AlertCircle size={13} aria-hidden />
+          Not updated until{" "}
+          {freshness.fields.length === 1
+            ? "the field in red is valid"
+            : `the ${String(freshness.fields.length)} fields in red are valid`}
+        </p>
+      ) : (
+        change !== null && (
+          <p className="sticky-note change">
+            <ChangeText change={change} />
+          </p>
+        )
       )}
-      <span className="sticky-label">Year</span>
-      <span className="num">{gbp(result.annual.netPay)}</span>
     </div>
   );
+}
+
+function StickyFigure({
+  label,
+  amount,
+  main = false,
+}: {
+  label: string;
+  amount: number;
+  main?: boolean;
+}) {
+  return (
+    <div className={`sticky-figure${main ? " main" : ""}`}>
+      <span className="sticky-label">{label}</span>
+      <span className="num sticky-value">{gbp(amount)}</span>
+    </div>
+  );
+}
+
+/**
+ * The top of the visible part of the page. With the keyboard open, iOS can scroll the page
+ * under a fixed bar at the top of the layout, so the bar follows what's actually on screen.
+ */
+function useVisibleTop(): number {
+  const [top, setTop] = useState(0);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (viewport === null) return;
+    const update = () => {
+      setTop(Math.max(0, viewport.offsetTop));
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
+  return top;
 }
 
 type Period = "year" | "month" | "bonus";

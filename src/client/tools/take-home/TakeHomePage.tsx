@@ -1,8 +1,10 @@
 import { Check, GitCompareArrows, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TakeHomeInputs } from "../../../shared/take-home/inputs.ts";
+import type { TakeHomeCalculation } from "../../../shared/take-home/result.ts";
 import { findTaxYearRules, taxYearRegistry } from "../../../shared/take-home/rules/registry.ts";
 import { PageHeader } from "../../shell/PageHeader.tsx";
+import { InvalidFieldsContext, useInvalidFields } from "../../ui/invalid-fields.tsx";
 import { Segmented } from "../../ui/Segmented.tsx";
 import { Compare } from "./Compare.tsx";
 import { currentTaxYear } from "./defaults.ts";
@@ -10,10 +12,12 @@ import { taxYearLabel } from "./format.ts";
 import { type Baseline, Inputs } from "./Inputs.tsx";
 import { LoanChart } from "./LoanChart.tsx";
 import { NotLoaded } from "./NotLoaded.tsx";
-import { PresetsButton } from "./Presets.tsx";
+import { PresetsButton, sameInputs } from "./Presets.tsx";
 import {
   Breakdown,
   Callout,
+  type EditChange,
+  type Freshness,
   Insights,
   Issues,
   Months,
@@ -25,11 +29,49 @@ import { NOW, type ScenarioId, scenarioOf, useTakeHome } from "./context.tsx";
 
 const WHAT_IF = "What if";
 
+/** How long the change an edit made stays on show after leaving the field. */
+const CHANGE_LINGER_MS = 6000;
+
+/** Where an edit started: the figures when a field was picked, to show what editing it changes. */
+interface EditStart {
+  scenario: ScenarioId;
+  inputs: TakeHomeInputs;
+  result: TakeHomeCalculation;
+}
+
+/** Keeps where the current edit started, and for a little while after leaving the field. */
+function useEditStart() {
+  const [start, setStart] = useState<EditStart | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = useCallback(() => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+  useEffect(() => cancel, [cancel]);
+  return {
+    start,
+    begin: (next: EditStart | null) => {
+      cancel();
+      setStart(next);
+    },
+    end: () => {
+      cancel();
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        setStart(null);
+      }, CHANGE_LINGER_MS);
+    },
+  };
+}
+
 export function TakeHomePage() {
   const tool = useTakeHome();
   const { state, setState, ui, setUi, editing, nowCalculation, whatIfCalculation, now } = tool;
   const [heroVisible, setHeroVisible] = useState(true);
+  const invalidFields = useInvalidFields();
+  const edit = useEditStart();
 
+  /** Watches the main figure, so the pinned summary shows once it's scrolled out of view. */
   const heroRef = useCallback((element: HTMLElement | null) => {
     if (element === null) return;
     const observer = new IntersectionObserver(([entry]) => {
@@ -91,6 +133,22 @@ export function TakeHomePage() {
     setUi({ editing: "what-if" });
   }
 
+  const editChange: EditChange | null =
+    ok !== null &&
+    edit.start !== null &&
+    edit.start.scenario === editing &&
+    !sameInputs(edit.start.inputs, editedInputs)
+      ? {
+          month: ok.normalMonth.netPay - edit.start.result.normalMonth.netPay,
+          year: ok.annual.netPay - edit.start.result.annual.netPay,
+        }
+      : null;
+  const freshness: Freshness =
+    invalidFields.labels.length > 0
+      ? { kind: "stale", fields: invalidFields.labels }
+      : { kind: "current", change: editChange };
+  const stale = freshness.kind === "stale" ? " stale" : "";
+
   const activePreset =
     editing === "now"
       ? (tool.presets.presets?.find((p) => p.id === ui.activePresetId) ?? null)
@@ -141,15 +199,37 @@ export function TakeHomePage() {
           </>
         }
       />
-      {ok !== null && <StickySummary result={ok} visible={!heroVisible} />}
+      {ok !== null && <StickySummary result={ok} visible={!heroVisible} freshness={freshness} />}
       <div className="calc-layout">
-        <div className="calc-hero" ref={heroRef}>
-          {ok !== null && <Summary result={ok} scenarioName={editedName} />}
+        <div className="calc-hero">
+          {ok !== null && (
+            <Summary
+              result={ok}
+              scenarioName={editedName}
+              freshness={freshness}
+              figureRef={heroRef}
+            />
+          )}
           {nowScenario !== null && whatIfScenario !== null && (
-            <Compare now={nowScenario} whatIf={whatIfScenario} />
+            <div className={`stale-dims${stale}`}>
+              <Compare now={nowScenario} whatIf={whatIfScenario} />
+            </div>
           )}
         </div>
-        <div className="calc-inputs">
+        <div
+          className="calc-inputs"
+          onFocus={(e) => {
+            const field = e.target;
+            if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) return;
+            edit.begin(
+              ok === null ? null : { scenario: editing, inputs: editedInputs, result: ok },
+            );
+          }}
+          onBlur={(e) => {
+            const field = e.target;
+            if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) edit.end();
+          }}
+        >
           {whatIf !== null && (
             <ScenarioBar
               editing={editing}
@@ -169,15 +249,17 @@ export function TakeHomePage() {
               }}
             />
           )}
-          <Inputs
-            inputs={editedInputs}
-            update={update}
-            issues={issues}
-            baseline={baseline}
-            scenarioName={editedName}
-          />
+          <InvalidFieldsContext value={invalidFields.report}>
+            <Inputs
+              inputs={editedInputs}
+              update={update}
+              issues={issues}
+              baseline={baseline}
+              scenarioName={editedName}
+            />
+          </InvalidFieldsContext>
         </div>
-        <div className="calc-results">
+        <div className={`calc-results stale-dims${stale}`}>
           {calculation.kind === "no-rules" && (
             <Callout
               severity="error"
