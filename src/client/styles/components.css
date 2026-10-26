@@ -7,13 +7,31 @@
     calc(env(safe-area-inset-bottom) + 48px) calc(var(--page-x) + env(safe-area-inset-left));
 }
 
+/*
+ * On a phone the title shares its row with the notifications button, and the tool's actions get
+ * a row of their own beneath, so a long preset name never pushes anything off the screen. With
+ * room to spare, the actions join the title's row.
+ */
 .page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title bell"
+    "actions actions";
+  align-items: end;
+  column-gap: 12px;
   margin-bottom: 20px;
   min-height: 56px;
+}
+
+.page-title {
+  grid-area: title;
+  min-width: 0;
+}
+
+.page-bell {
+  grid-area: bell;
+  margin-right: -10px;
 }
 
 .page-title h1 {
@@ -50,8 +68,23 @@
 
 .page-actions {
   display: flex;
+  grid-area: actions;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 14px;
+}
+
+@media (min-width: 600px) {
+  .page-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "title actions bell";
+  }
+
+  .page-actions {
+    justify-content: flex-end;
+    margin-top: 0;
+  }
 }
 
 .icon-button {
@@ -106,9 +139,9 @@
 
 .header-button {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
-  max-width: 46vw;
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--rule);
@@ -122,7 +155,20 @@
   border-color: var(--rule-strong);
 }
 
+/* For a button whose label can be long, such as a preset's name, which it shortens to fit. */
+.header-button.truncates {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 320px;
+}
+
+.header-button svg,
+.header-button .modified {
+  flex: none;
+}
+
 .header-button-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -628,6 +674,7 @@
 .calc-hero,
 .calc-inputs {
   display: grid;
+  min-width: 0;
   gap: 16px;
   align-content: start;
 }
@@ -1093,6 +1140,24 @@
   font-weight: 600;
 }
 
+/* As narrow as their figures, leaving the rest for the row labels. */
+.compare-table thead th + th {
+  width: 1%;
+}
+
+/*
+ * The heading above gives the scenarios' names in full. Here each is cut to its column's width,
+ * which the zero width stops it widening.
+ */
+.compare-name {
+  display: block;
+  width: 0;
+  min-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .compare-table th[scope="row"] {
   padding-right: 8px;
   color: var(--ink-2);
@@ -1478,6 +1543,6 @@
   text-align: left;
 }
 
-.compare-table td {
+.compare-table td.num {
   white-space: nowrap;
 }

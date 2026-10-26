@@ -94,21 +94,18 @@ export function PresetsButton({
     <>
       <button
         type="button"
-        className="header-button"
+        className="header-button truncates"
         onClick={() => {
           setOpen(true);
         }}
       >
         <Bookmark size={15} aria-hidden />
-        <span className="header-button-label">
-          {active === null ? "Presets" : active.name}
-          {modified && (
-            <span className="modified" aria-label=", edited">
-              {" "}
-              •
-            </span>
-          )}
-        </span>
+        <span className="header-button-label">{active === null ? "Presets" : active.name}</span>
+        {modified && (
+          <span className="modified" aria-label=", edited">
+            •
+          </span>
+        )}
       </button>
       <Sheet
         open={open}

@@ -578,3 +578,42 @@ test("an older Plan 1 or Plan 4 loan's write-off is conditional until it's known
     page.getByText("Whatever's left is written off by April 2030 at the latest."),
   ).toBeVisible();
 });
+
+test("no page is wider than the screen, however long a preset's name", async ({ page }) => {
+  const name = "A rather long preset name that could never fit in the header on a phone";
+  const created = await page.request.post("/api/tools/take-home/presets", {
+    data: { name, state: exampleInputs },
+  });
+  expect(created.ok()).toBe(true);
+
+  async function expectFits() {
+    await expect(page.getByRole("button", { name: /^Notifications/ })).toBeInViewport({
+      ratio: 1,
+    });
+    const widths = await page.locator("html").evaluate((element) => {
+      const html = element as unknown as { scrollWidth: number; clientWidth: number };
+      return { content: html.scrollWidth, screen: html.clientWidth };
+    });
+    expect(widths.content).toBeLessThanOrEqual(widths.screen);
+  }
+
+  await page.goto("/");
+  await expectFits();
+
+  await page.goto("/take-home");
+  await page.getByRole("button", { name: "Presets" }).click();
+  await page.locator(".preset-load").filter({ hasText: name }).click();
+  await setSalary(page, "120,000");
+  const presetButton = page.getByRole("button", { name: new RegExp(name) });
+  await expect(presetButton).toContainText("•");
+  await expect(presetButton.locator(".modified")).toBeInViewport({ ratio: 1 });
+  await expectFits();
+
+  await presetButton.click();
+  await page.getByRole("button", { name: "Compare" }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(`Now.*${name}`) })).toBeVisible();
+  await expectFits();
+
+  await page.goto("/take-home/student-loans");
+  await expectFits();
+});

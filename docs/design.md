@@ -22,7 +22,10 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
 - Index (`/`): the tools, then links to other apps on the same machine (from `ALMANAC_LINKS`).
   It never shows figures from inside a tool.
 - Each tool has its own page with the shared header: back link, title, tool actions, and the
-  notifications button.
+  notifications button. The notifications button always sits beside the title; on a phone the
+  actions take a row of their own beneath it. A button whose label can be long, like a preset's
+  name, shortens it to fit rather than widening the page. Nothing on any page should ever make
+  it scroll sideways.
 - The notification drawer collects notices from every tool. Warnings and info can be dismissed;
   errors, and warnings about edits that could be lost, stay until fixed.
 - On a laptop, a tool's inputs sit in a sticky column on the left with results on the right. On a

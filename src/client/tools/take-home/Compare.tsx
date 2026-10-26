@@ -118,8 +118,12 @@ export function Compare({ now, whatIf }: { now: Scenario; whatIf: Scenario }) {
             <th scope="col">
               <span className="visually-hidden">Figure</span>
             </th>
-            <th scope="col">{now.name}</th>
-            <th scope="col">{whatIf.name}</th>
+            <th scope="col">
+              <span className="compare-name">{now.name}</span>
+            </th>
+            <th scope="col">
+              <span className="compare-name">{whatIf.name}</span>
+            </th>
             <th scope="col">Change</th>
           </tr>
         </thead>

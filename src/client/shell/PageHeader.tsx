@@ -27,8 +27,8 @@ export function PageHeader({
         <h1>{title}</h1>
         {subtitle !== undefined && <div className="page-subtitle">{subtitle}</div>}
       </div>
-      <div className="page-actions">
-        {actions}
+      {actions !== undefined && <div className="page-actions">{actions}</div>}
+      <div className="page-bell">
         <NotificationButton />
       </div>
     </header>
