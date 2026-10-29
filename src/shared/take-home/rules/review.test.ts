@@ -8,18 +8,29 @@ function ids(date: string, registry = taxYearRegistry) {
   return takeHomeNotices(new Date(date), registry).map((notice) => notice.id);
 }
 
+const reviewedBeforeBudget = [
+  { ...rules2026To27, lastReviewed: "2026-10-23" },
+  { ...rules2027To28, lastReviewed: "2026-10-23" },
+];
+
 describe("takeHomeNotices", () => {
   it("is quiet on the day of the last review", () => {
-    expect(ids("2026-10-23T12:00:00Z")).toEqual([]);
+    const latestReview = taxYearRegistry
+      .map((rules) => rules.lastReviewed)
+      .sort()
+      .at(-1);
+    expect(ids(`${String(latestReview)}T12:00:00Z`)).toEqual([]);
   });
 
   it("is quiet before the Budget and asks for a review after it", () => {
-    expect(ids("2026-10-27T23:00:00Z")).toEqual([]);
-    expect(ids("2026-10-28T09:00:00Z")).toEqual(["take-home:review-after:uk-budget-2027-28"]);
+    expect(ids("2026-10-27T23:00:00Z", reviewedBeforeBudget)).toEqual([]);
+    expect(ids("2026-10-28T09:00:00Z", reviewedBeforeBudget)).toEqual([
+      "take-home:review-after:uk-budget-2027-28",
+    ]);
   });
 
   it("explains which rules to check", () => {
-    const [notice] = takeHomeNotices(new Date("2026-10-29T09:00:00Z"));
+    const [notice] = takeHomeNotices(new Date("2026-10-29T09:00:00Z"), reviewedBeforeBudget);
     expect(notice).toEqual({
       id: "take-home:review-after:uk-budget-2027-28",
       severity: "warning",
@@ -33,7 +44,7 @@ describe("takeHomeNotices", () => {
   });
 
   it("adds the Scottish Budget once it's passed", () => {
-    expect(ids("2026-12-03T12:00:00Z")).toEqual([
+    expect(ids("2026-12-03T12:00:00Z", reviewedBeforeBudget)).toEqual([
       "take-home:review-after:uk-budget-2027-28",
       "take-home:review-after:scottish-budget-2027-28",
     ]);

@@ -112,7 +112,7 @@ export const knownReviewEvents: readonly ReviewEvent[] = [
     "uk-budget",
     2027,
     "2026-10-28",
-    "https://www.cipp.org.uk/resources/news/the-date-of-the-autumn-budget-announced.html",
+    "https://www.gov.uk/government/publications/budget-2026-document/budget-2026-html",
   ),
   known(
     "scottish-budget",

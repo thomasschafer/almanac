@@ -20,7 +20,7 @@ const restOfUkBands2026To27: IncomeTaxBands = {
 export const rules2026To27: TaxYearRules = {
   id: "2026-27",
   startYear: 2026,
-  lastReviewed: "2026-10-23",
+  lastReviewed: "2026-10-28",
   incomeTax: {
     personalAllowance: confirmed(pounds(12_570), employerRates),
     taperThreshold: confirmed(pounds(100_000), incomeOver100k),

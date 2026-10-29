@@ -24,7 +24,7 @@ const { incomeTax, nationalInsurance, studentLoans, pensions } = previous;
 export const rules2027To28: TaxYearRules = {
   id: "2027-28",
   startYear: 2027,
-  lastReviewed: "2026-10-23",
+  lastReviewed: "2026-10-28",
   incomeTax: {
     personalAllowance: unchanged(incomeTax.personalAllowance, frozenToApril2028, thresholdFreeze),
     taperThreshold: unchanged(incomeTax.taperThreshold, statutoryUnchanged),

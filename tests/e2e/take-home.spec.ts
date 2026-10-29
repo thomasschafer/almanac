@@ -121,7 +121,7 @@ test("flags an invalid tax code next to the field", async ({ page }) => {
 });
 
 test("asks for the tax rules to be checked after a Budget", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-11-02T12:00:00Z"));
+  await page.clock.setFixedTime(new Date("2026-12-04T12:00:00Z"));
   await page.goto("/");
   await page.getByRole("button", { name: /Notifications, \d+ new/ }).click();
   const notice = page.locator(".notice").filter({ hasText: "Check the tax rules after" });
