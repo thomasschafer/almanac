@@ -12,7 +12,13 @@ function show(inputs: HouseMoveInputs) {
   const row = calculateHouseMove(inputs, "2026-11").breakdown;
   if (row === null) throw new Error("Expected an affordable result");
   return render(
-    <Breakdown row={row} region={inputs.region} asOf={inputs.asOf} mortgage={inputs.mortgage} />,
+    <Breakdown
+      row={row}
+      region={inputs.region}
+      asOf={inputs.asOf}
+      mortgage={inputs.mortgage}
+      deposit={inputs.deposit}
+    />,
   );
 }
 
@@ -31,8 +37,10 @@ describe("relevant breakdown amounts", () => {
     inputs.mortgage.ercBands = [{ until: "2026-10", rate: percent(1) }];
     inputs.mortgage.exitFee = fromPounds(100);
     show(inputs);
-    expect(screen.getByText("Early repayment charge").parentElement?.textContent).toContain("£0");
-    expect(screen.getByText("Exit fee").parentElement?.textContent).toContain("£100");
+    expect(screen.getByText("Early repayment charge").closest(".move-line")?.textContent).toContain(
+      "−£0",
+    );
+    expect(screen.getByText("Exit fee").closest(".move-line")?.textContent).toContain("−£100");
   });
 
   it("still shows today's-money equivalents for a future result", () => {

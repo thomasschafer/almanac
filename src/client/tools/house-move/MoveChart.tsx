@@ -9,7 +9,7 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
   const points = calculation.series;
   const height = 240;
   const plotW = Math.max(1, width - PAD.left - PAD.right);
-  const values = points.flatMap((point) => [point.available, point.needed]);
+  const values = points.flatMap((point) => [point.leftForDeposit, point.deposit]);
   const top = niceCeiling(Math.max(1, ...values));
   const bottom = Math.min(0, ...values);
   const x = (index: number) => PAD.left + (index / Math.max(1, points.length - 1)) * plotW;
@@ -22,7 +22,7 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
   const marker = points.findIndex((p) => p.month === resultMonth);
   return (
     <section className="panel" aria-label="Move affordability chart">
-      <h2 className="kicker">Available against needed</h2>
+      <h2 className="kicker">Left for the deposit against deposit needed</h2>
       <p className="panel-note">
         After mortgage, buying tax and costs. Up-front cash shortfalls are shown separately.
       </p>
@@ -33,10 +33,14 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
           <>
             <span>{monthLabel(readout.month)}</span>
             <span>
-              Available <span className="num">{gbp(readout.available)}</span>
+              Left for the deposit <span className="num">{gbp(readout.leftForDeposit)}</span>
             </span>
             <span>
-              Needed <span className="num">{gbp(readout.needed)}</span>
+              Deposit needed <span className="num">{gbp(readout.deposit)}</span>
+            </span>
+            <span className={readout.leftOver < 0 ? "move-shortfall" : undefined}>
+              {readout.leftOver < 0 ? "Shortfall" : "Left over"}{" "}
+              <span className="num">{gbp(readout.leftOver)}</span>
             </span>
           </>
         )}
@@ -76,7 +80,7 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
             width={width}
             height={height}
             role="img"
-            aria-label="Money available and deposit needed over time"
+            aria-label="Left for the deposit and deposit needed over time"
           >
             {[0, 0.5, 1].map((fraction) => {
               const value = bottom + fraction * (top - bottom);
@@ -95,11 +99,13 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
                 </g>
               );
             })}
-            {(["available", "needed"] as const).map((key) => (
+            {(["leftForDeposit", "deposit"] as const).map((key) => (
               <polyline
                 key={key}
                 className="chart-line"
-                style={{ stroke: key === "available" ? "var(--house-move)" : "var(--series-2)" }}
+                style={{
+                  stroke: key === "leftForDeposit" ? "var(--house-move)" : "var(--series-2)",
+                }}
                 points={points.map((point, index) => `${x(index)},${y(point[key])}`).join(" ")}
               />
             ))}
@@ -155,7 +161,7 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
         aria-valuetext={
           readout === null
             ? "Choose a month"
-            : `${monthLabel(readout.month)}: available ${gbp(readout.available)}, needed ${gbp(readout.needed)}`
+            : `${monthLabel(readout.month)}: left for the deposit ${gbp(readout.leftForDeposit)}, deposit needed ${gbp(readout.deposit)}, ${readout.leftOver < 0 ? "shortfall" : "left over"} ${gbp(readout.leftOver)}`
         }
         onChange={(e) => {
           setScrub(Number(e.target.value) / Math.max(1, points.length - 1));
@@ -164,11 +170,11 @@ export function MoveChart({ calculation }: { calculation: HouseMoveCalculation }
       <div className="chart-legend">
         <span>
           <span className="swatch" style={{ background: "var(--house-move)" }} />
-          Available
+          Left for the deposit
         </span>
         <span>
           <span className="swatch" style={{ background: "var(--series-2)" }} />
-          Needed
+          Deposit needed
         </span>
       </div>
     </section>

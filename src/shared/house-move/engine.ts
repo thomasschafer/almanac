@@ -27,6 +27,7 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
     const date = addMonths(input.asOf, m);
     if (m > 0) savings = asPence(grow(savings, savingsFactor) + input.cash.monthlySaving);
     const inflation = growthFactor(input.growth.inflation, m);
+    const real = (amount: Pence) => grow(amount, 1 / inflation);
     const salePrice = grow(input.homeValue, growthFactor(input.growth.home, m));
     const targetPrice = grow(input.targetPrice, growthFactor(input.growth.target, m));
     const loan = mortgage.months[m];
@@ -45,13 +46,15 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
           break;
       }
       const tax = cost.plusVat ? atRate(net, vat.rate.value) : asPence(0);
+      const total = asPence(net + tax);
       return {
         id: cost.id,
         name: cost.name,
         timing: cost.timing,
         net,
         vat: tax,
-        total: asPence(net + tax),
+        total,
+        todaysMoney: real(total),
       };
     });
     const totalCosts = (timing: "completion" | "upfront") =>
@@ -67,9 +70,9 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
     // The exit fee is nominal: the spec only indexes fixed cost items and a fixed deposit.
     const exitFee = input.mortgage.exitFee;
     const tax = buyingTax(targetPrice, input.region === "scotland" ? lbtt : sdlt);
-    const equityLeft = asPence(
-      salePrice - loan.balance - earlyRepaymentCharge - exitFee - completionCosts - tax,
-    );
+    const equityFromSale = asPence(salePrice - loan.balance - earlyRepaymentCharge - exitFee);
+    const moneyAtCompletion = asPence(equityFromSale + savingsLeft);
+    const leftForDeposit = asPence(moneyAtCompletion - completionCosts - tax);
     // A cash deposit cannot exceed the price; excess funds remain available after buying.
     const deposit = asPence(
       Math.min(
@@ -80,8 +83,7 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
       ),
     );
     const newMortgage = asPence(targetPrice - deposit);
-    const available = asPence(equityLeft + savingsLeft);
-    const leftOver = asPence(available - deposit);
+    const leftOver = asPence(leftForDeposit - deposit);
     let borrowing: MonthBreakdown["borrowing"] = null;
     if (input.borrowingCheck !== null) {
       const check = input.borrowingCheck;
@@ -89,7 +91,6 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
       const maximum = roundedRatio(BigInt(income) * BigInt(Math.round(check.multiple * 100)), 100n);
       borrowing = { income, maximum, sufficient: newMortgage <= maximum };
     }
-    const real = (amount: Pence) => grow(amount, 1 / inflation);
     rows.push({
       month: date,
       salePrice,
@@ -102,7 +103,9 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
       costs,
       completionCosts,
       buyingTax: tax,
-      equityLeft,
+      equityFromSale,
+      moneyAtCompletion,
+      leftForDeposit,
       targetPrice,
       deposit,
       newMortgage,
@@ -110,8 +113,6 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
       savingsLeft,
       upfrontCosts,
       upfrontShortfall,
-      available,
-      needed: deposit,
       leftOver,
       borrowing,
       affordable: leftOver >= 0 && (borrowing?.sufficient ?? true),
@@ -127,9 +128,10 @@ export function calculateHouseMove(raw: HouseMoveInputs, today: Month): HouseMov
         targetPrice: real(targetPrice),
         deposit: real(deposit),
         newMortgage: real(newMortgage),
-        equityLeft: real(equityLeft),
-        available: real(available),
-        needed: real(deposit),
+        equityFromSale: real(equityFromSale),
+        savingsLeft: real(savingsLeft),
+        moneyAtCompletion: real(moneyAtCompletion),
+        leftForDeposit: real(leftForDeposit),
         leftOver: real(leftOver),
         upfrontCosts: real(upfrontCosts),
       },

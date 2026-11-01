@@ -257,13 +257,23 @@ result month, the results say how much short they are, but the date still stands
 
 ### Results
 
-- The date, and how long until then. Its today's-money figures are beside the main amounts.
-- What happens in that month: the sale price, the mortgage paid off, the early repayment charge
-  and exit fee, the costs at completion and the equity left; then the target price, the deposit,
-  the tax on buying and the new mortgage; and what's left over beyond the deposit.
+- The date, and how long until then. Quieter today's-money figures sit beside the main amounts,
+  unless they equal the nominal amount.
+- "Where the money goes" reads as one running sum. The sale price less the mortgage, early
+  repayment charge and exit fee gives the equity from the sale. Adding savings left after
+  up-front costs gives the money at completion. Subtracting each completion cost, in list order,
+  and SDLT or LBTT gives what is left for the deposit. Subtracting the deposit gives what is left
+  over. The deposit says whether it is a percentage of the price or fixed. ERC and exit fee rows
+  are hidden when zero unless configured; costs say "incl. VAT" where it applies.
+- Each running-sum line shows its sign, and subtotals have a rule above and are bold. Rounded
+  line items add up to each displayed subtotal, in both nominal and today's money, and in the
+  purchase equation. A negative amount left over is shown as a shortfall.
+- Amounts are shown to the pound, so a displayed subtotal can differ from the exact figure by a pound or so; exact figures still drive affordability, the date and the chart.
+- A separate "The purchase" block shows the deposit plus the new mortgage equals the target price.
 - The cash needed before completion, and whether savings cover it.
-- A chart of the money available against what's needed for each month, from now until a couple of
-  years after the result (at least five years, at most 40), marking the result.
+- A chart of "Left for the deposit" against "Deposit needed" for each month, from now until a
+  couple of years after the result (at least five years, at most 40), marking the result. Its
+  readout also shows what is left over, or the shortfall, in the selected month.
 - Warnings: overpayments over the allowance, a monthly payment that leaves the mortgage unpaid at
   the end of its term, and that the rules on buying tax are today's, assumed to stay the same.
 

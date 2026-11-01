@@ -38,8 +38,10 @@ describe("house-move calculation", () => {
     });
     expect(result.breakdown).toMatchObject({
       mortgageBalance: 0,
-      available: pounds(1000),
-      needed: pounds(1000),
+      equityFromSale: pounds(1000),
+      moneyAtCompletion: pounds(1000),
+      leftForDeposit: pounds(1000),
+      deposit: pounds(1000),
       leftOver: 0,
     });
     expect(result.series).toHaveLength(61);
@@ -90,7 +92,9 @@ describe("house-move calculation", () => {
     });
     expect(breakdown.completionCosts).toBe(pounds(9000));
     expect(breakdown.buyingTax).toBe(pounds(12500));
-    expect(breakdown.equityLeft).toBe(pounds(128500));
+    expect(breakdown.equityFromSale).toBe(pounds(150000));
+    expect(breakdown.moneyAtCompletion).toBe(pounds(150000));
+    expect(breakdown.leftForDeposit).toBe(pounds(128500));
     expect(breakdown.deposit).toBe(pounds(45000));
     expect(breakdown.leftOver).toBe(pounds(83500));
     expect(breakdown.upfrontShortfall).toBe(pounds(120));

@@ -1,3 +1,4 @@
+import type { HouseMoveInputs } from "../../../shared/house-move/inputs.ts";
 import type { ReactNode } from "react";
 import type {
   HouseMoveCalculation,
@@ -6,6 +7,7 @@ import type {
   MoveDate,
 } from "../../../shared/house-move/result.ts";
 import { Callout } from "../../ui/Callout.tsx";
+import { displayLedger } from "./display-ledger.ts";
 import { gbp, monthLabel } from "./format.ts";
 import { MoveChart } from "./MoveChart.tsx";
 
@@ -31,13 +33,30 @@ export function waitLabel(result: MoveDate): string {
   return `In ${parts.join(" ")}`;
 }
 
-function Amount({ value, real }: { value: number; real?: number }) {
+type Operation = "+" | "−" | "=";
+
+function Amount({
+  value,
+  real,
+  operation,
+}: {
+  value: number;
+  real?: number;
+  operation?: Operation;
+}) {
+  const format = (amount: number) => {
+    const formatted =
+      operation === undefined ? gbp(amount) : `${amount < 0 ? "−" : ""}${gbp(Math.abs(amount))}`;
+    if (operation === "−" && amount >= 0) return `−${formatted}`;
+    if (operation === "+" && amount >= 0) return `+${formatted}`;
+    return formatted;
+  };
   return (
     <span className="move-amount">
-      <span className="num">{gbp(value)}</span>
+      <span className="num move-nominal">{format(value)}</span>
       {real !== undefined && real !== value && (
         <span className="move-real">
-          <span className="num">{gbp(real)}</span> in today's money
+          <span className="num">{format(real)}</span> in today's money
         </span>
       )}
     </span>
@@ -49,17 +68,37 @@ function Line({
   value,
   real,
   strong = false,
+  operation,
+  shortfall = false,
 }: {
   name: string;
   value: number;
   real?: number;
   strong?: boolean;
+  operation?: Operation;
+  shortfall?: boolean;
 }) {
   return (
-    <div className={strong ? "move-line total" : "move-line"}>
-      <dt>{name}</dt>
+    <div className={`move-line${strong ? " total" : ""}${shortfall ? " move-shortfall" : ""}`}>
+      <dt>
+        {operation === undefined ? (
+          name
+        ) : (
+          <>
+            <span className="move-sign">{operation}</span>
+            <span>
+              {name}
+              {shortfall && <span className="move-shortfall-note">Shortfall</span>}
+            </span>
+          </>
+        )}
+      </dt>
       <dd>
-        <Amount value={value} {...(real === undefined ? {} : { real })} />
+        <Amount
+          value={value}
+          {...(real === undefined ? {} : { real })}
+          {...(operation === undefined ? {} : { operation })}
+        />
       </dd>
     </div>
   );
@@ -70,74 +109,48 @@ export function Breakdown({
   region,
   asOf,
   mortgage,
+  deposit,
 }: {
-  mortgage: import("../../../shared/house-move/inputs.ts").HouseMoveInputs["mortgage"];
+  mortgage: HouseMoveInputs["mortgage"];
+  deposit: HouseMoveInputs["deposit"];
   asOf: string;
   row: MonthBreakdown;
   region: "england-ni" | "scotland";
 }) {
   const real = row.todaysMoney;
+  const ledger = displayLedger(row);
   return (
     <>
       <section className="panel" aria-label="Move breakdown">
         <h2 className="kicker">Where the money goes · {monthLabel(row.month)}</h2>
         <p className="panel-note">Today's money is in {monthLabel(asOf)} pounds.</p>
-        <h3 className="move-subhead">Selling your home</h3>
-        <dl className="move-breakdown">
-          <Line name="Sale price" value={row.salePrice} real={real.salePrice} />
-          <Line name="Mortgage paid off" value={row.mortgageBalance} real={real.mortgageBalance} />
-          {(row.earlyRepaymentCharge !== 0 || mortgage.ercBands.length > 0) && (
-            <>
+        <dl className="move-breakdown move-running">
+          {ledger.move
+            .filter((entry) => {
+              if (entry.field === "earlyRepaymentCharge")
+                return row.earlyRepaymentCharge !== 0 || mortgage.ercBands.length > 0;
+              if (entry.field === "exitFee") return row.exitFee !== 0 || mortgage.exitFee !== 0;
+              return true;
+            })
+            .map((entry) => (
               <Line
-                name="Early repayment charge"
-                value={row.earlyRepaymentCharge}
-                real={real.earlyRepaymentCharge}
-              />
-            </>
-          )}
-          {(row.exitFee !== 0 || mortgage.exitFee !== 0) && (
-            <>
-              <Line name="Exit fee" value={row.exitFee} real={real.exitFee} />
-            </>
-          )}
-          {row.costs
-            .filter((cost) => cost.timing === "completion")
-            .map((cost) => (
-              <Line
-                key={cost.id}
-                name={`${cost.name}${cost.vat > 0 ? " (including VAT)" : ""}`}
-                value={cost.total}
+                key={entry.field}
+                operation={entry.operation}
+                name={
+                  entry.field === "buyingTax"
+                    ? region === "scotland"
+                      ? "LBTT"
+                      : "SDLT"
+                    : entry.field === "deposit"
+                      ? `Deposit (${deposit.kind === "percent" ? `${deposit.rate / 100}% of price` : "fixed"})`
+                      : entry.name
+                }
+                value={entry.value}
+                real={entry.todaysMoney}
+                strong={entry.operation === "="}
+                shortfall={entry.field === "leftOver" && row.leftOver < 0}
               />
             ))}
-          <Line
-            name="Total costs at completion"
-            value={row.completionCosts}
-            real={real.completionCosts}
-          />
-          <Line
-            name="Equity left after tax and completion costs"
-            value={row.equityLeft}
-            real={real.equityLeft}
-            strong
-          />
-        </dl>
-        <h3 className="move-subhead">Buying your next home</h3>
-        <dl className="move-breakdown">
-          <Line name="Target price" value={row.targetPrice} real={real.targetPrice} />
-          <Line name="Deposit" value={row.deposit} real={real.deposit} />
-          <Line
-            name={`${region === "scotland" ? "LBTT" : "SDLT"} on buying`}
-            value={row.buyingTax}
-            real={real.buyingTax}
-          />
-          <Line name="New mortgage" value={row.newMortgage} real={real.newMortgage} />
-          <Line name="Savings left after up-front costs" value={row.savingsLeft} />
-          <Line
-            name="Left over beyond the deposit"
-            value={row.leftOver}
-            real={real.leftOver}
-            strong
-          />
         </dl>
         {row.borrowing !== null && (
           <p className="panel-note">
@@ -148,6 +161,21 @@ export function Breakdown({
               : "The new mortgage exceeds this limit."}
           </p>
         )}
+      </section>
+      <section className="panel" aria-label="The purchase">
+        <h2 className="kicker">The purchase</h2>
+        <dl className="move-breakdown move-running">
+          {ledger.purchase.map((entry) => (
+            <Line
+              key={entry.field}
+              name={entry.name}
+              operation={entry.operation}
+              value={entry.value}
+              real={entry.todaysMoney}
+              strong={entry.operation === "="}
+            />
+          ))}
+        </dl>
       </section>
       <section className="panel" aria-label="Cash before completion">
         <h2 className="kicker">Cash before completion</h2>
@@ -224,8 +252,10 @@ export function Results({
   region,
   asOf,
   mortgage,
+  deposit,
 }: {
-  mortgage: import("../../../shared/house-move/inputs.ts").HouseMoveInputs["mortgage"];
+  mortgage: HouseMoveInputs["mortgage"];
+  deposit: HouseMoveInputs["deposit"];
   asOf: string;
   calculation: HouseMoveCalculation;
   region: "england-ni" | "scotland";
@@ -257,7 +287,9 @@ export function Results({
           </p>
         </Callout>
       )}
-      {row !== null && <Breakdown row={row} region={region} asOf={asOf} mortgage={mortgage} />}
+      {row !== null && (
+        <Breakdown row={row} region={region} asOf={asOf} mortgage={mortgage} deposit={deposit} />
+      )}
       <MoveChart calculation={calculation} />
       {calculation.warnings.map((warning, index) => {
         const copy = warningCopy(warning);

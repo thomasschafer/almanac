@@ -1,4 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
+import { fromPounds } from "../../src/shared/money.ts";
+import { percent } from "../../src/shared/rates.ts";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { defaultHouseMoveInputs } from "../../src/shared/house-move/defaults.ts";
 import { maximumInputs } from "../../src/shared/house-move/test-inputs.ts";
 import { calculateHouseMove } from "../../src/shared/house-move/engine.ts";
@@ -90,7 +92,9 @@ test("deposit switches between percentage and money without losing its value", a
 test("costs can be added and removed, and Scotland changes buying tax", async ({ page }) => {
   await page.goto("/house-move");
   const breakdown = page.getByRole("region", { name: "Move breakdown", exact: true });
-  await expect(breakdown.getByText("SDLT on buying").locator("..")).toContainText("£12,500");
+  await expect(breakdown.getByRole("term").filter({ hasText: "SDLT" }).locator("..")).toContainText(
+    "£12,500",
+  );
   const sheet = await more(page);
   await sheet.getByRole("button", { name: "Add cost", exact: true }).click();
   await expect(sheet.getByRole("button", { name: "Remove New cost", exact: true })).toBeVisible();
@@ -99,7 +103,9 @@ test("costs can be added and removed, and Scotland changes buying tax", async ({
   await expect(sheet.getByRole("button", { name: "Remove New cost", exact: true })).toHaveCount(0);
   await sheet.getByRole("radio", { name: "Scotland", exact: true }).click();
   await sheet.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(breakdown.getByText("LBTT on buying").locator("..")).toContainText("£18,350");
+  await expect(breakdown.getByRole("term").filter({ hasText: "LBTT" }).locator("..")).toContainText(
+    "£18,350",
+  );
 });
 
 test("presets save, load, rename and delete", async ({ page }) => {
@@ -224,4 +230,86 @@ test("month controls use named months and restore invalid month or year edits", 
   await month.selectOption("10");
   await month.blur();
   await expect(month.locator("option:checked")).toHaveText("October");
+});
+
+async function assertVisibleRunningSum(section: Locator): Promise<number> {
+  const rows = section.locator(".move-running > .move-line");
+  let total = 0;
+  let realTotal = 0;
+  let subtotalCount = 0;
+  for (let index = 0; index < (await rows.count()); index++) {
+    const row = rows.nth(index);
+    const operation = await row.locator(".move-sign").innerText();
+    const shown = await row.locator(".move-nominal").innerText();
+    expect(shown).not.toContain(".");
+    const value = Number(shown.replace(/[£,+\s]/g, "").replace("−", "-"));
+    expect(Number.isSafeInteger(value), shown).toBe(true);
+    const quiet = row.locator(".move-real .num");
+    const realShown = (await quiet.count()) === 0 ? shown : await quiet.innerText();
+    expect(realShown).not.toContain(".");
+    const realValue = Number(realShown.replace(/[£,+\s]/g, "").replace("−", "-"));
+    expect(Number.isSafeInteger(realValue), realShown).toBe(true);
+    if (operation === "=") {
+      expect(value, await row.locator("dt").innerText()).toBe(total);
+      expect(realValue, `Today’s money: ${await row.locator("dt").innerText()}`).toBe(realTotal);
+      subtotalCount++;
+    } else {
+      expect(["+", "−"]).toContain(operation);
+      if (operation === "−") expect(shown).toMatch(/^−£/);
+      else expect(shown).toMatch(/^\+£/);
+      total += value;
+      realTotal += realValue;
+    }
+  }
+  return subtotalCount;
+}
+
+test("visible whole-pound subtotals reconcile through the deposit and the purchase", async ({
+  page,
+}) => {
+  const scenario = structuredClone(inputs);
+  scenario.mortgage.balance = fromPounds(150000.34);
+  scenario.mortgage.ercBands = [{ until: "2027-11", rate: percent(1.5) }];
+  scenario.mortgage.exitFee = fromPounds(125.45);
+  scenario.cash.savings = fromPounds(7000.77);
+  scenario.costs = scenario.costs.map((cost) =>
+    cost.id === "arrangement"
+      ? { ...cost, amount: { kind: "fixed", amount: fromPounds(999.21) } }
+      : cost,
+  );
+  const saved = await page.request.put("/api/tools/house-move/state", {
+    data: { state: { inputs: scenario } },
+  });
+  expect(saved.ok()).toBe(true);
+  await page.goto("/house-move");
+  const breakdown = page.getByRole("region", { name: "Move breakdown", exact: true });
+  await expect(breakdown.getByText("Deposit (25% of price)", { exact: true })).toBeVisible();
+  await expect(breakdown.getByText("Estate agent (incl. VAT)", { exact: true })).toBeVisible();
+  expect(await assertVisibleRunningSum(breakdown)).toBe(4);
+  expect(
+    await assertVisibleRunningSum(page.getByRole("region", { name: "The purchase", exact: true })),
+  ).toBe(1);
+  await setHome(page, "150000");
+  await expect(breakdown.locator(".move-real").first()).toBeVisible();
+  expect(await assertVisibleRunningSum(breakdown)).toBe(4);
+  expect(
+    await assertVisibleRunningSum(page.getByRole("region", { name: "The purchase", exact: true })),
+  ).toBe(1);
+});
+
+test("the chart matches the running sum and identifies a negative balance as a shortfall", async ({
+  page,
+}) => {
+  await page.goto("/house-move");
+  const slider = page.getByRole("slider", { name: "Chart month" });
+  await slider.fill("1");
+  await slider.fill("0");
+  const readout = page.locator(".chart-readout");
+  await expect(readout).toContainText("Left for the deposit £128,501");
+  await expect(readout).toContainText("Deposit needed £112,500");
+  await expect(readout).toContainText("Left over £16,001");
+  await setHome(page, "150000");
+  await slider.fill("1");
+  await slider.fill("0");
+  await expect(readout.locator(".move-shortfall")).toContainText("Shortfall −£");
 });

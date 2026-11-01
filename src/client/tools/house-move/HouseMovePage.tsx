@@ -161,6 +161,7 @@ export default function HouseMovePage() {
                 region={state.inputs.region}
                 asOf={state.inputs.asOf}
                 mortgage={state.inputs.mortgage}
+                deposit={state.inputs.deposit}
               />
             )}
           </>

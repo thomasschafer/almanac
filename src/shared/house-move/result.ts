@@ -40,11 +40,14 @@ export interface MonthBreakdown {
     readonly net: Pence;
     readonly vat: Pence;
     readonly total: Pence;
+    readonly todaysMoney: Pence;
   }[];
-  /** User costs only; buying tax is shown separately and deducted in equityLeft. */
+  /** User costs paid at completion, excluding buying tax. */
   readonly completionCosts: Pence;
   readonly buyingTax: Pence;
-  readonly equityLeft: Pence;
+  readonly equityFromSale: Pence;
+  readonly moneyAtCompletion: Pence;
+  readonly leftForDeposit: Pence;
   readonly targetPrice: Pence;
   readonly deposit: Pence;
   readonly newMortgage: Pence;
@@ -52,8 +55,6 @@ export interface MonthBreakdown {
   readonly savingsLeft: Pence;
   readonly upfrontCosts: Pence;
   readonly upfrontShortfall: Pence;
-  readonly available: Pence;
-  readonly needed: Pence;
   readonly leftOver: Pence;
   readonly borrowing: {
     readonly income: Pence;
@@ -74,9 +75,10 @@ export interface MonthBreakdown {
     readonly targetPrice: Pence;
     readonly deposit: Pence;
     readonly newMortgage: Pence;
-    readonly equityLeft: Pence;
-    readonly available: Pence;
-    readonly needed: Pence;
+    readonly equityFromSale: Pence;
+    readonly savingsLeft: Pence;
+    readonly moneyAtCompletion: Pence;
+    readonly leftForDeposit: Pence;
     readonly leftOver: Pence;
     readonly upfrontCosts: Pence;
   };

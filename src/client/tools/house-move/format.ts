@@ -6,7 +6,9 @@ export const gbp = (pence: number) =>
     style: "currency",
     currency: "GBP",
     maximumFractionDigits: 0,
-  }).format(pence / 100);
+  })
+    .format(pence / 100)
+    .replace(/^-/, "−");
 
 export function monthLabel(month: string): string {
   return new Intl.DateTimeFormat("en-GB", {

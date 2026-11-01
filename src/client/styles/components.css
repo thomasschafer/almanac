@@ -1795,3 +1795,35 @@
   clear: both;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
 }
+
+.move-running .move-line {
+  border-bottom: 0;
+}
+.move-running .move-line dt {
+  display: flex;
+  gap: 8px;
+}
+.move-sign {
+  flex: 0 0 12px;
+  font-family: var(--font-num);
+}
+.move-running .move-line dd {
+  flex: 0 0 auto;
+  max-width: 60%;
+}
+.move-running .move-nominal {
+  white-space: nowrap;
+}
+.move-running .move-line.total {
+  border-top: 1px solid var(--rule-strong);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+.move-shortfall {
+  color: var(--status-error);
+}
+.move-shortfall-note {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+}
