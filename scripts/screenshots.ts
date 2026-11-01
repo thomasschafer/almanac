@@ -1,10 +1,13 @@
 // Saves screenshots of the main screens on a phone and a laptop, in light and dark mode, for
 // checking visual changes. Usage: node scripts/screenshots.ts <base URL> <output directory>
-// Run it against a development or e2e server: it replaces the take-home state with made-up
-// figures first.
+// Run it against a development or e2e server: it replaces the take-home and house-move states
+// with made-up figures first.
 import { chromium, devices } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { fromPounds } from "../src/shared/money.ts";
+import { defaultHouseMoveInputs } from "../src/shared/house-move/defaults.ts";
+import { ukDate } from "../src/shared/rule-review.ts";
 import type { TakeHomeState } from "../src/shared/take-home/state.ts";
 import { exampleInputs, exampleWhatIf } from "../tests/e2e/fixtures.ts";
 
@@ -30,11 +33,29 @@ const viewports = {
 const plain: TakeHomeState = { inputs: exampleInputs, whatIf: null };
 const comparing: TakeHomeState = { inputs: exampleInputs, whatIf: exampleWhatIf };
 const pages = [
+  { name: "house-move", path: "/house-move", state: plain, moreOptions: false },
+  { name: "house-move-options", path: "/house-move", state: plain, moreOptions: true },
+  { name: "house-move-costs", path: "/house-move", state: plain, moreOptions: true, costs: true },
   { name: "index", path: "/", state: plain },
   { name: "take-home", path: "/take-home", state: plain },
   { name: "take-home-what-if", path: "/take-home", state: comparing },
   { name: "student-loans", path: "/take-home/student-loans", state: plain },
 ];
+
+const houseMoveResponse = await fetch(`${baseUrl}/api/tools/house-move/state`, {
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    state: {
+      inputs: {
+        ...defaultHouseMoveInputs(ukDate(new Date()).slice(0, 7)),
+        homeValue: fromPounds(200_000),
+      },
+    },
+  }),
+});
+if (!houseMoveResponse.ok)
+  throw new Error(`Couldn't set up house-move figures: ${houseMoveResponse.status}`);
 
 const browser = await chromium.launch();
 for (const [device, options] of Object.entries(viewports)) {
@@ -48,9 +69,23 @@ for (const [device, options] of Object.entries(viewports)) {
       const tab = await context.newPage();
       await tab.goto(`${baseUrl}${page.path}`);
       await tab.waitForLoadState("networkidle");
+      if (page.moreOptions === true) {
+        await tab.getByRole("button", { name: /More options/ }).click();
+        const sheet = tab.getByRole("dialog", { name: "More options" });
+        await sheet.waitFor({ state: "visible" });
+        if (page.costs === true) {
+          await sheet.getByRole("heading", { name: "Costs", exact: true }).evaluate((element) => {
+            const heading = element as unknown as {
+              scrollIntoView: (options: { block: "start" }) => void;
+            };
+            heading.scrollIntoView({ block: "start" });
+          });
+        }
+      }
       await tab.screenshot({
         path: join(outDir, `${device}-${colorScheme}-${page.name}.png`),
-        fullPage: true,
+        fullPage: page.moreOptions !== true,
+        animations: "disabled",
       });
       await tab.close();
     }

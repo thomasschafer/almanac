@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useNow } from "../../ui/useNow.ts";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { z } from "zod";
 import { calculateTakeHome } from "../../../shared/take-home/engine.ts";
 import type { TakeHomeInputs } from "../../../shared/take-home/inputs.ts";
@@ -13,7 +14,7 @@ import type { TakeHomeState } from "../../../shared/take-home/state.ts";
 import { readLocal, writeLocal } from "../../local-store.ts";
 import { useToolState } from "../../state/useToolState.ts";
 import { defaultInputs } from "./defaults.ts";
-import { usePresets } from "./Presets.tsx";
+import { usePresets } from "../../ui/Presets.tsx";
 
 export type Calculation =
   | { kind: "no-rules"; taxYear: string }
@@ -62,24 +63,6 @@ function useUi(): [Ui, (change: Partial<Ui>) => void] {
   return [ui, change];
 }
 
-/**
- * The current time, brought up to date whenever the page comes back into view, so an app left
- * open moves on to a new tax year or interest year when it's next looked at.
- */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") setNow(new Date());
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, []);
-  return now;
-}
-
 export function useTakeHomeValue() {
   const now = useNow();
   const defaults = useCallback(
@@ -88,7 +71,7 @@ export function useTakeHomeValue() {
   );
   const tool = useToolState("take-home", defaults);
   const [ui, setUi] = useUi();
-  const presets = usePresets();
+  const presets = usePresets("take-home");
 
   const state = tool.state;
   const nowCalculation = useMemo(

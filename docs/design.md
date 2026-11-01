@@ -7,7 +7,8 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
 
 - Figures are data. Every number is set in the monospace (`.num`), so columns line up and
   values read differently from copy. Copy uses the sans-serif in `--font-copy`.
-- One identity colour per tool (`--take-home` for take-home pay), used for its icon, focus rings,
+- One identity colour per tool (`--take-home` blue for take-home pay, `--house-move` purple for
+  house move), used for its icon, focus rings,
   selected chips and its main chart series. Status colours (info, warning, error) are reserved
   for notices and callouts, and always come with an icon and a title.
 - Quiet surfaces. Panels are white (or near-black) cards with a hairline border on a grey page.
@@ -33,6 +34,11 @@ first but just as good on a laptop. These notes keep it consistent as tools are 
   figures stay in view while editing.
 - Results never quietly show figures that don't match what's typed. Live feedback while editing
   uses the tool's colour; figures waiting on an invalid field are dimmed, with a status note.
+
+The tools share presets, numeric and text fields, invalid-field reporting, sheets, segmented
+controls, callouts and loading states in `src/client/ui`. `CalculatorLayout` shares the phone and
+laptop arrangement; pinned summary styles are shared too. Each page sets `--accent` and `--accent-ink` from its own identity colour.
+The visibility-refresh clock and chart sizing helpers also live in `src/client/ui`.
 
 ## Adding a tool
 

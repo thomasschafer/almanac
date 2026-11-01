@@ -1,4 +1,6 @@
 import type { z } from "zod";
+import { houseMoveInputs, storedHouseMoveInputs } from "./house-move/inputs.ts";
+import { houseMoveState, storedHouseMoveState } from "./house-move/state.ts";
 import { storedTakeHomeInputs, takeHomeInputs } from "./take-home/inputs.ts";
 import { storedTakeHomeState, takeHomeState } from "./take-home/state.ts";
 
@@ -33,6 +35,12 @@ function toolSchema<
  * validated against its schema on the way in and out.
  */
 export const toolSchemas = {
+  "house-move": toolSchema({
+    state: houseMoveState,
+    storedState: storedHouseMoveState,
+    preset: houseMoveInputs,
+    storedPreset: storedHouseMoveInputs,
+  }),
   "take-home": toolSchema({
     state: takeHomeState,
     storedState: storedTakeHomeState,

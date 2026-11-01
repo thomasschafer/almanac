@@ -1,11 +1,11 @@
 # Almanac
 
-A personal collection of small, useful tools, starting with a UK take-home pay calculator. It
+A personal collection of small, useful tools, including UK take-home pay and house-move calculators. It
 runs on a laptop and is reached from a phone over Tailscale.
 
 - [Spec](docs/spec.md): what it does and why.
 - [Design](docs/design.md): how it looks, and how to add a tool.
-- [Tax rules](docs/tax-rules.md): where the take-home figures come from, and keeping them current.
+- [Tax rules](docs/tax-rules.md): where the tax figures come from, and keeping them current.
 - [Operations](docs/operations.md): running it, and where its data lives.
 
 ## Development

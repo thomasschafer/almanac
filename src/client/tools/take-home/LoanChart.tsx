@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useChartInteraction, niceCeiling, compactPounds } from "../../ui/chart.ts";
 import { Link } from "react-router";
 import type { StudentLoanPlan } from "../../../shared/take-home/inputs.ts";
 import type {
@@ -174,18 +174,7 @@ export function BalanceChart({
   loans: readonly LoanProjection[];
   height?: number;
 }) {
-  const [width, setWidth] = useState(0);
-  const [scrub, setScrub] = useState<number | null>(null);
-  const ref = useCallback((element: HTMLDivElement | null) => {
-    if (element === null) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry !== undefined) setWidth(entry.contentRect.width);
-    });
-    observer.observe(element);
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
+  const { width, scrub, setScrub, ref } = useChartInteraction();
 
   const allPoints = loans.flatMap((l) => l.points);
   const startTime = time(start);
@@ -504,17 +493,3 @@ function LoanPanel({ children, action }: { children: React.ReactNode; action?: R
 }
 
 /** The smallest round number at or above `value`, for the top of an axis. */
-function niceCeiling(value: number): number {
-  const magnitude = 10 ** Math.floor(Math.log10(value));
-  for (const step of [1, 2, 2.5, 5, 10]) {
-    if (step * magnitude >= value) return step * magnitude;
-  }
-  return 10 * magnitude;
-}
-
-function compactPounds(pence: number): string {
-  const pounds = pence / 100;
-  if (pounds === 0) return "£0";
-  if (pounds >= 1000) return `£${String(Math.round(pounds / 100) / 10)}k`;
-  return `£${String(Math.round(pounds))}`;
-}

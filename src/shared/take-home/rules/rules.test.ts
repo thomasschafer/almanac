@@ -9,13 +9,9 @@ import {
   taxYearRegistry,
 } from "./registry.ts";
 import { monthlyRepaymentThreshold } from "./student-loans.ts";
-import {
-  percent,
-  taxRegimes,
-  type IncomeTaxBands,
-  type Sourced,
-  type TaxYearRules,
-} from "./types.ts";
+import { percent } from "../../rates.ts";
+import type { Sourced } from "../../sourced.ts";
+import { taxRegimes, type IncomeTaxBands, type TaxYearRules } from "./types.ts";
 
 function bandsInOrder(bands: IncomeTaxBands) {
   return [...bands.belowBasic, bands.basic, ...bands.aboveBasic];

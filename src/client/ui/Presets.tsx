@@ -1,6 +1,6 @@
 import { Bookmark, Check, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type { TakeHomeInputs } from "../../../shared/take-home/inputs.ts";
+import type { ToolId, PresetState } from "../../shared/tools.ts";
 import {
   ApiError,
   createPreset,
@@ -9,24 +9,24 @@ import {
   type Preset,
   renamePreset,
   updatePreset,
-} from "../../api.ts";
-import { Sheet } from "../../ui/Sheet.tsx";
+} from "../api.ts";
+import { Sheet } from "./Sheet.tsx";
 
-export type TakeHomePreset = Preset<"take-home">;
-
-export function sameInputs(a: TakeHomeInputs, b: TakeHomeInputs): boolean {
+export function sameInputs(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** The presets on the server, reloaded after every change made here. */
-export function usePresets(): {
-  presets: TakeHomePreset[] | null;
+export function usePresets<T extends ToolId>(
+  tool: T,
+): {
+  presets: Preset<T>[] | null;
   error: string | null;
   reload: () => Promise<void>;
 } {
-  const [presets, setPresets] = useState<TakeHomePreset[] | null>(null);
+  const [presets, setPresets] = useState<Preset<T>[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const apply = useCallback((load: Promise<TakeHomePreset[]>) => {
+  const apply = useCallback((load: Promise<Preset<T>[]>) => {
     return load.then(
       (loaded) => {
         setPresets(loaded);
@@ -37,14 +37,15 @@ export function usePresets(): {
       },
     );
   }, []);
-  const reload = useCallback(() => apply(listPresets("take-home")), [apply]);
+  const reload = useCallback(() => apply(listPresets(tool)), [apply, tool]);
   useEffect(() => {
-    void apply(listPresets("take-home"));
-  }, [apply]);
+    void apply(listPresets(tool));
+  }, [apply, tool]);
   return { presets, error, reload };
 }
 
-export function PresetsButton({
+export function PresetsButton<T extends ToolId>({
+  tool,
   inputs,
   presets,
   activeId,
@@ -55,13 +56,14 @@ export function PresetsButton({
   loadError,
 }: {
   /** The figures being edited, which saving a preset saves. */
-  inputs: TakeHomeInputs;
-  presets: TakeHomePreset[] | null;
+  tool: T;
+  inputs: PresetState<T>;
+  presets: Preset<T>[] | null;
   /** The preset the figures were loaded from, if any. */
   activeId: string | null;
-  onLoad: (preset: TakeHomePreset) => void;
-  onSaved: (preset: TakeHomePreset) => void;
-  onCompare: (preset: TakeHomePreset) => void;
+  onLoad: (preset: Preset<T>) => void;
+  onSaved: (preset: Preset<T>) => void;
+  onCompare?: (preset: Preset<T>) => void;
   reload: () => Promise<void>;
   loadError: string | null;
 }) {
@@ -122,7 +124,7 @@ export function PresetsButton({
             const trimmed = name.trim();
             if (trimmed === "") return;
             void run(async () => {
-              onSaved(await createPreset("take-home", trimmed, inputs));
+              onSaved(await createPreset(tool, trimmed, inputs));
               setName("");
             });
           }}
@@ -146,7 +148,8 @@ export function PresetsButton({
           <p className="empty">Loading…</p>
         ) : presets.length === 0 ? (
           <p className="empty">
-            No presets yet. Save the current figures to come back to them, or to compare against.
+            No presets yet. Save the current figures to come back to them
+            {onCompare === undefined ? "." : ", or to compare against."}
           </p>
         ) : (
           <ul className="preset-list">
@@ -162,7 +165,7 @@ export function PresetsButton({
                         const trimmed = renaming.name.trim();
                         if (trimmed === "") return;
                         void run(async () => {
-                          await renamePreset("take-home", preset.id, trimmed);
+                          await renamePreset(tool, preset.id, trimmed);
                           setRenaming(null);
                         });
                       }}
@@ -208,7 +211,7 @@ export function PresetsButton({
                         disabled={busy}
                         onClick={() =>
                           void run(() =>
-                            updatePreset("take-home", preset.id, preset.name, inputs).then(
+                            updatePreset(tool, preset.id, preset.name, inputs).then(
                               () => undefined,
                             ),
                           )
@@ -217,16 +220,18 @@ export function PresetsButton({
                         Update with current
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        onCompare(preset);
-                        setOpen(false);
-                      }}
-                    >
-                      Compare
-                    </button>
+                    {onCompare !== undefined && (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          onCompare(preset);
+                          setOpen(false);
+                        }}
+                      >
+                        Compare
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="icon-button small"
@@ -245,7 +250,7 @@ export function PresetsButton({
                       onClick={() => {
                         if (!window.confirm(`Delete the preset "${preset.name}"?`)) return;
                         void run(async () => {
-                          await deletePreset("take-home", preset.id);
+                          await deletePreset(tool, preset.id);
                         });
                       }}
                     >

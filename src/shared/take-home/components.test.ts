@@ -4,7 +4,7 @@ import { rateOfForNi, splitAcrossMonths } from "./arithmetic.ts";
 import { employeeNi, employerNi, type NiRates } from "./ni.ts";
 import { monthlyAdjustment } from "./paye.ts";
 import { rules2026To27 } from "./rules/2026-27.ts";
-import { percent } from "./rules/types.ts";
+import { percent } from "../rates.ts";
 import { studentLoanRepayments } from "./student-loan-repayments.ts";
 import { deriveTaxCode, formatTaxCode, parseTaxCode } from "./tax-code.ts";
 

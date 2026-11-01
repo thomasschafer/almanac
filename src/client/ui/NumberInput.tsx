@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { asPence, type Pence } from "../../shared/money.ts";
 import { useReportInvalid } from "./invalid-fields.tsx";
 
-interface Format<T> {
+export interface Format<T> {
   /** Turns typed text into a value, or null if it isn't one (yet). */
   parse: (text: string) => T | null;
   format: (value: T) => string;
@@ -117,9 +117,17 @@ export function NumberInput<T>({
   decimals = true,
   trailing,
   labelAccessory,
+  visibleLabel,
+  problem,
+  error,
+  numeric = true,
   ...empty
 }: {
   label: string;
+  visibleLabel?: string | undefined;
+  problem?: ((value: T) => string | null) | undefined;
+  error?: string | undefined;
+  numeric?: boolean;
   value: T | null;
   format: Format<T>;
   prefix?: string | undefined;
@@ -135,17 +143,20 @@ export function NumberInput<T>({
   const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? (value === null ? "" : format.format(value));
-  const invalid = draft !== null && parseDraft(draft, format, empty).kind === "invalid";
+  const parsed = parseDraft(shown, format, empty);
+  const draftProblem = parsed.kind === "value" ? problem?.(parsed.value) : undefined;
+  const invalid =
+    (draft !== null && parsed.kind === "invalid") || draftProblem != null || error !== undefined;
   useReportInvalid(id, label, invalid);
-  const shownHint = invalid ? format.expects : hint;
+  const shownHint = error ?? draftProblem ?? (invalid ? format.expects : hint);
 
   return (
     <div className="field">
       {labelAccessory === undefined ? (
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id}>{visibleLabel ?? label}</label>
       ) : (
         <div className="field-label-row">
-          <label htmlFor={id}>{label}</label>
+          <label htmlFor={id}>{visibleLabel ?? label}</label>
           {labelAccessory}
         </div>
       )}
@@ -153,9 +164,10 @@ export function NumberInput<T>({
         {prefix !== undefined && <span className="input-affix">{prefix}</span>}
         <input
           id={id}
-          className="num"
+          aria-label={visibleLabel === undefined ? undefined : label}
+          className={numeric ? "num" : undefined}
           // Phones' number pads have no minus sign, so fields that take one get a full keyboard.
-          inputMode={format.negative ? "text" : decimals ? "decimal" : "numeric"}
+          inputMode={!numeric || format.negative ? "text" : decimals ? "decimal" : "numeric"}
           autoComplete="off"
           enterKeyHint="done"
           placeholder={placeholder}
@@ -170,7 +182,7 @@ export function NumberInput<T>({
             const text = e.currentTarget.value;
             setDraft(text);
             const next = parseDraft(text, format, empty);
-            if (next.kind === "value") empty.onChange(next.value);
+            if (next.kind === "value" && problem?.(next.value) == null) empty.onChange(next.value);
             else if (next.kind === "null" && empty.nullable === true) empty.onChange(null);
           }}
           onBlur={() => {

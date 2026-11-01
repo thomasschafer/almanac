@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { takeHomeState } from "../../shared/take-home/state.ts";
 import type { ToolState } from "../../shared/tools.ts";
 import { testInputs } from "../../shared/take-home/test-inputs.ts";
 
@@ -118,7 +119,7 @@ function pendingGet() {
 }
 
 function savedSalaries(): number[] {
-  return putState.mock.calls.map(([, state]) => state.inputs.salary / 100);
+  return putState.mock.calls.map(([, state]) => takeHomeState.parse(state).inputs.salary / 100);
 }
 
 function unsaved(from: Tab = tab) {
@@ -374,7 +375,7 @@ describe("leaving", () => {
 function cachedSalary(): number {
   const raw = localStorage.getItem("almanac:state:take-home");
   if (raw === null) throw new Error("nothing cached");
-  return (JSON.parse(raw) as { state: State }).state.inputs.salary / 100;
+  return takeHomeState.parse((JSON.parse(raw) as { state: State }).state).inputs.salary / 100;
 }
 
 describe("sharing in a tab", () => {

@@ -1,6 +1,7 @@
-import { Banknote, type LucideIcon } from "lucide-react";
+import { House, Banknote, type LucideIcon } from "lucide-react";
 import { lazy, type LazyExoticComponent, type ComponentType } from "react";
 import type { Notice } from "../../shared/notices.ts";
+import { houseMoveNotices } from "../../shared/house-move/rules/review.ts";
 import { takeHomeNotices } from "../../shared/take-home/rules/review.ts";
 import { unsavedNotices } from "../state/tool-store.ts";
 
@@ -19,6 +20,16 @@ export interface Tool {
 }
 
 export const tools: readonly Tool[] = [
+  {
+    id: "house-move",
+    name: "House move",
+    description: "When the equity in your home can fund your next move",
+    icon: House,
+    color: "var(--house-move)",
+    path: "/house-move",
+    Page: lazy(() => import("./house-move/HouseMovePage.tsx")),
+    notices: (now) => [...houseMoveNotices(now), ...unsavedNotices("house-move", "House move")],
+  },
   {
     id: "take-home",
     name: "Take-home pay",

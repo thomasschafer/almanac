@@ -6,20 +6,27 @@ export function Segmented<T extends string>({
   options,
   onChange,
   hideLabel = false,
+  visibleLabel,
 }: {
   label: string;
   value: T;
   options: readonly { value: T; label: string }[];
   onChange: (value: T) => void;
   hideLabel?: boolean;
+  visibleLabel?: string;
 }) {
   const id = useId();
   return (
     <div className="field">
       <span id={id} className={hideLabel ? "visually-hidden" : "field-label"}>
-        {label}
+        {visibleLabel ?? label}
       </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={id}>
+      <div
+        className="segmented"
+        role="radiogroup"
+        aria-label={visibleLabel === undefined ? undefined : label}
+        aria-labelledby={visibleLabel === undefined ? id : undefined}
+      >
         {options.map((option) => (
           <button
             key={option.value}

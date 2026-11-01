@@ -10,7 +10,8 @@ import {
 } from "./arithmetic.ts";
 import type { Contribution, TakeHomeInputs } from "./inputs.ts";
 import type { InputIssue } from "./result.ts";
-import type { Rate, SalarySacrificeNiRelief } from "./rules/types.ts";
+import type { Rate } from "../rates.ts";
+import type { SalarySacrificeNiRelief } from "./rules/types.ts";
 
 /** One month's pay and pension contributions, before tax, NI and student loans. */
 export interface MonthPay {

@@ -151,3 +151,129 @@ student loan announcements (August, and interest from 1 September). Those dates 
 to the rules. The tool raises a notice when one has passed since the rules were last checked,
 when next year's rules are missing from January, and if six months pass without a check. How to
 do a review is in [tax-rules.md](tax-rules.md).
+
+## House move
+
+Works out when the next house can be bought with the equity in the current one: the date when
+selling the current home, paying off its mortgage and paying every cost of the move leaves at
+least the chosen deposit for the next one. A new mortgage covers the rest of the price, and
+whether it can be had is assumed unless the borrowing check is turned on. It answers: how many
+years and months until we can move, and where does the money go when we do? It's agnostic about
+whose figures it holds; nothing about anyone's situation is built in beyond the defaults below.
+
+The tool lives at `/house-move`.
+
+### Inputs
+
+Progressive, as take-home: the basics are always shown and the rest is in a "more options" sheet.
+Amounts called today's money are in pounds of the month the figures are as of, and grow with
+inflation; prices grow with their own growth rates.
+
+- Basics: the current home's value, the mortgage balance, its rate and remaining term, a monthly
+  overpayment, the target price (today's money) and the deposit for it, either a percentage of
+  the price (default 25%) or a fixed amount.
+- The current mortgage, in more options: the month the figures are as of (the balance is the one
+  after that month's payment, and the home value and savings are from the same month), a monthly
+  payment if it differs from the one the balance, rate and term give, when the fixed rate ends and the rate after it, early repayment charges as a
+  percentage of the balance repaid until each of a list of months, an exit fee, one-off
+  overpayments in given months, what overpayments do (shorten the term, the default, or lower the
+  payment), and the yearly overpayment allowance during the fixed rate (default 10% of the
+  balance at the start of each year of it).
+- Growth: the current home's yearly price growth, the target's (each defaulting to 3%, and either
+  can be negative) and inflation (default 2.5%), which fixed costs and the deposit amount in
+  today's money grow with.
+- Where the next home is: England or Northern Ireland (SDLT) or Scotland (LBTT), for the tax on
+  buying it.
+- Cash: savings in the month the figures are as of, saved each month, and their yearly interest rate.
+- Costs: a list of named costs, each either a fixed amount in today's money or a percentage of the
+  sale or purchase price, optionally plus VAT, and either paid at completion (out of the sale
+  proceeds) or up front (before completion, so from cash). Costs can be added, edited and removed.
+  The defaults are typical figures, and the tool says they're estimates:
+
+  | Cost                     | Amount                  | Paid          |
+  | ------------------------ | ----------------------- | ------------- |
+  | Estate agent             | 1.25% of sale, plus VAT | at completion |
+  | Conveyancing (sale)      | £1,500                  | at completion |
+  | Conveyancing (purchase)  | £2,000                  | at completion |
+  | Mortgage arrangement fee | £999                    | at completion |
+  | Energy performance cert. | £90                     | up front      |
+  | Searches                 | £400                    | up front      |
+  | Survey                   | £700                    | up front      |
+  | Mortgage broker          | £500                    | up front      |
+  | Removals                 | £1,500                  | up front      |
+
+  SDLT or LBTT, the early repayment charge and the exit fee aren't in the list: they're worked out
+  or entered elsewhere, and always paid at completion.
+
+- Borrowing check, off by default: gross yearly household income, its yearly growth, and the most
+  a lender would lend as a multiple of it (default 4.5).
+
+Results are worked out again as each keystroke makes a valid value, and fields behave as in
+take-home: empty is 0, invalid values say what the field takes and dim the results, and leaving
+the field puts back its last valid value. The figures as of month can't be after this month.
+Amounts are limited to £100 million each, yearly growth and inflation to -20% through 20%,
+mortgage and savings interest rates to 20%, and the income multiple to 10. Combinations of
+figures, costs and growth that are too large to calculate safely over the whole projection say
+so beside the inputs. Saved figures still load if time has made them unsuitable for a calculation;
+the results wait for those inputs to be corrected.
+
+### Calculation
+
+The engine in `src/shared/house-move` is pure. It steps month by month from the figures as of
+month, until 40 years from this month:
+
+- Mortgage interest each month is the balance times the yearly rate over 12, in whole pence. The
+  payment is the repayment (annuity) payment for the balance, rate and remaining term, or the
+  monthly payment given, which must cover the interest. When the fixed rate ends, the payment is
+  worked out again for the balance and the remaining term at the rate after it. The fixed rate
+  applies through its end month; the payment changes the month after it ends. Overpayments
+  either shorten the term (the payment stays the same) or lower the payment (it's worked out again
+  over the remaining term after each overpayment). The last payment clears the balance exactly.
+  Overpayments above the allowance during the fixed rate are shown as a warning, not prevented.
+  If a monthly payment override leaves a balance at the end of the term, the payments and
+  interest continue until it is paid off, and the results warn that the term has been exceeded.
+- Early repayment charges apply through each band's end month: selling in that month still
+  pays the charge. The exit fee stays at the amount entered; it does not grow with inflation.
+- The sale price and the target price grow monthly at the equivalent of their yearly rates, and
+  fixed costs and a fixed deposit with inflation.
+- Savings earn interest monthly at the equivalent of their yearly rate (before tax), and add the
+  monthly saving after it.
+- SDLT or LBTT is worked out on the purchase price from the rules for the next home's location,
+  at the rates for someone replacing their main home (no first-time buyer relief, and no
+  surcharge for additional homes, as the current home is sold on the same day).
+
+A month is affordable when the sale price, less the mortgage balance, the early repayment charge
+in that month, the exit fee and every cost paid at completion, plus any savings left after paying
+the costs paid up front, is at least the deposit; and, with the borrowing check on, the new
+mortgage (the price less the deposit) is no more than the income multiple. The result is the
+first affordable month from this month onwards, as a date and as years and months from now; or
+now; or not within 40 years. A fixed deposit above the purchase price is capped at the price,
+so the new mortgage is zero. Switching between a percentage and an amount converts the chosen
+deposit at the target price entered, to the nearest basis point or penny.
+
+The up-front costs are a separate figure, the cash needed before completion. They can't come
+from the equity, which isn't released until completion. If savings don't cover them in the
+result month, the results say how much short they are, but the date still stands.
+
+### Results
+
+- The date, and how long until then. Its today's-money figures are beside the main amounts.
+- What happens in that month: the sale price, the mortgage paid off, the early repayment charge
+  and exit fee, the costs at completion and the equity left; then the target price, the deposit,
+  the tax on buying and the new mortgage; and what's left over beyond the deposit.
+- The cash needed before completion, and whether savings cover it.
+- A chart of the money available against what's needed for each month, from now until a couple of
+  years after the result (at least five years, at most 40), marking the result.
+- Warnings: overpayments over the allowance, a monthly payment that leaves the mortgage unpaid at
+  the end of its term, and that the rules on buying tax are today's, assumed to stay the same.
+
+Out of scope for now: buying before selling (bridging), porting the mortgage, interest-only and
+part-and-part mortgages, help to buy and shared ownership, Wales (LTT), tax on savings interest,
+and any gap between selling and buying.
+
+### Buying tax rules
+
+SDLT and LBTT bands are data in `src/shared/house-move/rules/`, each with its source and whether
+it's confirmed, and the date they were last checked. They need checking after the UK Budget
+(SDLT) and the Scottish Budget (LBTT), and the tool raises a notice when one has passed since the
+last check, as take-home does for its rules.

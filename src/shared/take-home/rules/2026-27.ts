@@ -1,5 +1,7 @@
 import { fromPounds as pounds } from "../../money.ts";
-import { confirmed, percent, type IncomeTaxBands, type TaxYearRules } from "./types.ts";
+import { confirmed } from "../../sourced.ts";
+import { percent } from "../../rates.ts";
+import type { IncomeTaxBands, TaxYearRules } from "./types.ts";
 
 const employerRates = "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027";
 const payeSpecification =

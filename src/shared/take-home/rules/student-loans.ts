@@ -1,6 +1,7 @@
 import { fromPounds as pounds, type Pence } from "../../money.ts";
 import type { PlanWithOlderLoans, StudentLoanPlan } from "../inputs.ts";
-import { confirmed, percent, provisional, type Rate, type Sourced } from "./types.ts";
+import { confirmed, provisional, type Sourced } from "../../sourced.ts";
+import { percent, type Rate } from "../../rates.ts";
 
 /**
  * Student loan rules that aren't tied to one tax year: interest, write-off and how repayment

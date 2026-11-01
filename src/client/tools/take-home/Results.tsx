@@ -1,4 +1,5 @@
-import { AlertCircle, AlertTriangle, Info, OctagonAlert } from "lucide-react";
+import { Callout } from "../../ui/Callout.tsx";
+import { AlertCircle } from "lucide-react";
 import { type Ref, useEffect, useState } from "react";
 import type { Pence } from "../../../shared/money.ts";
 import type {
@@ -613,29 +614,6 @@ function flagInsight(
         ),
       };
   }
-}
-
-const calloutIcons = { info: Info, warning: AlertTriangle, error: OctagonAlert } as const;
-
-export function Callout({
-  severity,
-  title,
-  children,
-}: {
-  severity: "info" | "warning" | "error";
-  title: string;
-  children: React.ReactNode;
-}) {
-  const Icon = calloutIcons[severity];
-  return (
-    <aside className={`callout ${severity}`}>
-      <Icon size={18} className="callout-icon" aria-hidden />
-      <div>
-        <h3>{title}</h3>
-        <div className="callout-body">{children}</div>
-      </div>
-    </aside>
-  );
 }
 
 export function Months({ result }: { result: TakeHomeCalculation }) {

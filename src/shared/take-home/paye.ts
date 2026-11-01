@@ -1,7 +1,8 @@
 import { asPence, type Pence } from "../money.ts";
 import { itemAt, rateOfDown, sum } from "./arithmetic.ts";
 import type { TaxCode } from "./result.ts";
-import type { BoundedBand, IncomeTaxBands, Rate } from "./rules/types.ts";
+import type { Rate } from "../rates.ts";
+import type { BoundedBand, IncomeTaxBands } from "./rules/types.ts";
 
 /**
  * Income tax through PAYE for monthly pay, following HMRC's "Specification for PAYE tax table

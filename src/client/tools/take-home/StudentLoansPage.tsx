@@ -13,8 +13,8 @@ import {
   ProjectionProblem,
   totalsQualifier,
 } from "./LoanChart.tsx";
-import { NotLoaded } from "./NotLoaded.tsx";
-import { Callout } from "./Results.tsx";
+import { NotLoaded } from "../../ui/NotLoaded.tsx";
+import { Callout } from "../../ui/Callout.tsx";
 
 interface YearRow {
   taxYear: string;
@@ -50,7 +50,7 @@ function payMonthLabel(month: LoanMonth): string {
 }
 
 export function StudentLoansPage() {
-  const { state, editing, setUi, nowCalculation, whatIfCalculation } = useTakeHome();
+  const { status, retry, state, editing, setUi, nowCalculation, whatIfCalculation } = useTakeHome();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export function StudentLoansPage() {
     return (
       <main className="page">
         {header}
-        <NotLoaded />
+        <NotLoaded status={status} retry={retry} />
       </main>
     );
   }

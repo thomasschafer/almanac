@@ -33,13 +33,9 @@ import {
   type OlderLoanTerms,
   type ThresholdUprating,
 } from "./rules/student-loans.ts";
-import {
-  provisional,
-  type Rate,
-  type SalarySacrificeNiRelief,
-  type StudentLoanYearRules,
-  type TaxYearRules,
-} from "./rules/types.ts";
+import { provisional } from "../sourced.ts";
+import type { Rate } from "../rates.ts";
+import type { SalarySacrificeNiRelief, StudentLoanYearRules, TaxYearRules } from "./rules/types.ts";
 import {
   repaymentsDue,
   studentLoanRepayments,

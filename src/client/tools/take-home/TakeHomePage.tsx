@@ -1,3 +1,6 @@
+import { CalculatorLayout } from "../../ui/CalculatorLayout.tsx";
+import { useHeroVisibility } from "../../ui/useHeroVisibility.ts";
+import { Callout } from "../../ui/Callout.tsx";
 import { Check, GitCompareArrows, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TakeHomeInputs } from "../../../shared/take-home/inputs.ts";
@@ -11,11 +14,10 @@ import { currentTaxYear } from "./defaults.ts";
 import { taxYearLabel } from "./format.ts";
 import { type Baseline, Inputs } from "./Inputs.tsx";
 import { LoanChart } from "./LoanChart.tsx";
-import { NotLoaded } from "./NotLoaded.tsx";
-import { PresetsButton, sameInputs } from "./Presets.tsx";
+import { NotLoaded } from "../../ui/NotLoaded.tsx";
+import { PresetsButton, sameInputs } from "../../ui/Presets.tsx";
 import {
   Breakdown,
-  Callout,
   type EditChange,
   type Freshness,
   Insights,
@@ -67,21 +69,9 @@ function useEditStart() {
 export function TakeHomePage() {
   const tool = useTakeHome();
   const { state, setState, ui, setUi, editing, nowCalculation, whatIfCalculation, now } = tool;
-  const [heroVisible, setHeroVisible] = useState(true);
+  const { visible: heroVisible, ref: heroRef } = useHeroVisibility();
   const invalidFields = useInvalidFields();
   const edit = useEditStart();
-
-  /** Watches the main figure, so the pinned summary shows once it's scrolled out of view. */
-  const heroRef = useCallback((element: HTMLElement | null) => {
-    if (element === null) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry !== undefined) setHeroVisible(entry.isIntersecting);
-    });
-    observer.observe(element);
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   useEffect(() => {
     document.title = "Take-home pay · Almanac";
@@ -94,7 +84,7 @@ export function TakeHomePage() {
     return (
       <main className="page">
         <PageHeader title="Take-home pay" />
-        <NotLoaded />
+        <NotLoaded status={tool.status} retry={tool.retry} />
       </main>
     );
   }
@@ -147,6 +137,7 @@ export function TakeHomePage() {
     invalidFields.labels.length > 0
       ? { kind: "stale", fields: invalidFields.labels }
       : { kind: "current", change: editChange };
+
   const stale = freshness.kind === "stale" ? " stale" : "";
 
   const activePreset =
@@ -173,6 +164,7 @@ export function TakeHomePage() {
               </button>
             )}
             <PresetsButton
+              tool="take-home"
               inputs={editedInputs}
               presets={tool.presets.presets}
               activeId={activePreset?.id ?? null}
@@ -200,101 +192,108 @@ export function TakeHomePage() {
         }
       />
       {ok !== null && <StickySummary result={ok} visible={!heroVisible} freshness={freshness} />}
-      <div className="calc-layout">
-        <div className="calc-hero">
-          {ok !== null && (
-            <Summary
-              result={ok}
-              scenarioName={editedName}
-              freshness={freshness}
-              figureRef={heroRef}
-            />
-          )}
-          {nowScenario !== null && whatIfScenario !== null && (
-            <div className={`stale-dims${stale}`}>
-              <Compare now={nowScenario} whatIf={whatIfScenario} />
-            </div>
-          )}
-        </div>
-        <div
-          className="calc-inputs"
-          onFocus={(e) => {
+      <CalculatorLayout
+        stale={freshness.kind === "stale"}
+        inputEvents={{
+          onFocus: (e) => {
             const field = e.target;
             if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) return;
             edit.begin(
               ok === null ? null : { scenario: editing, inputs: editedInputs, result: ok },
             );
-          }}
-          onBlur={(e) => {
+          },
+          onBlur: (e) => {
             const field = e.target;
             if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) edit.end();
-          }}
-        >
-          {whatIf !== null && (
-            <ScenarioBar
-              editing={editing}
-              label={whatIf.label}
-              onEdit={(scenario) => {
-                setUi({ editing: scenario });
-              }}
-              onAdopt={() => {
-                setState((s) =>
-                  s.whatIf === null ? s : { inputs: s.whatIf.inputs, whatIf: null },
-                );
-                setUi({ editing: "now", activePresetId: null });
-              }}
-              onEnd={() => {
-                setState((s) => ({ ...s, whatIf: null }));
-                setUi({ editing: "now" });
-              }}
-            />
-          )}
-          <InvalidFieldsContext value={invalidFields.report}>
-            <Inputs
-              inputs={editedInputs}
-              update={update}
-              issues={issues}
-              baseline={baseline}
-              scenarioName={editedName}
-            />
-          </InvalidFieldsContext>
-        </div>
-        <div className={`calc-results stale-dims${stale}`}>
-          {calculation.kind === "no-rules" && (
-            <Callout
-              severity="error"
-              title={`No tax rules for ${taxYearLabel(calculation.taxYear)}`}
-            >
-              <p>Choose another tax year under more options.</p>
-              {findTaxYearRules(taxYearRegistry, currentYear) !== undefined && (
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => {
-                    update((i) => ({ ...i, taxYear: currentYear }));
-                  }}
-                >
-                  Use {taxYearLabel(currentYear)}
-                </button>
-              )}
-            </Callout>
-          )}
-          <Issues issues={issues} />
-          {ok !== null && calculation.kind === "done" && (
-            <>
-              <Insights result={ok} />
-              <div className="results-grid">
-                <Breakdown result={ok} />
-                <NextThousand result={ok} />
+          },
+        }}
+        hero={
+          <>
+            {ok !== null && (
+              <Summary
+                result={ok}
+                scenarioName={editedName}
+                freshness={freshness}
+                figureRef={heroRef}
+              />
+            )}
+            {nowScenario !== null && whatIfScenario !== null && (
+              <div className={`stale-dims${stale}`}>
+                <Compare now={nowScenario} whatIf={whatIfScenario} />
               </div>
-              {editedInputs.studentLoans.length > 0 && (
-                <LoanChart projection={calculation.projection} detailsLink />
-              )}
-              <Months result={ok} />
-            </>
-          )}
-        </div>
-      </div>
+            )}
+          </>
+        }
+        inputs={
+          <>
+            {whatIf !== null && (
+              <ScenarioBar
+                editing={editing}
+                label={whatIf.label}
+                onEdit={(scenario) => {
+                  setUi({ editing: scenario });
+                }}
+                onAdopt={() => {
+                  setState((s) =>
+                    s.whatIf === null ? s : { inputs: s.whatIf.inputs, whatIf: null },
+                  );
+                  setUi({ editing: "now", activePresetId: null });
+                }}
+                onEnd={() => {
+                  setState((s) => ({ ...s, whatIf: null }));
+                  setUi({ editing: "now" });
+                }}
+              />
+            )}
+            <InvalidFieldsContext value={invalidFields.report}>
+              <Inputs
+                inputs={editedInputs}
+                update={update}
+                issues={issues}
+                baseline={baseline}
+                scenarioName={editedName}
+              />
+            </InvalidFieldsContext>
+          </>
+        }
+        results={
+          <>
+            {calculation.kind === "no-rules" && (
+              <Callout
+                severity="error"
+                title={`No tax rules for ${taxYearLabel(calculation.taxYear)}`}
+              >
+                <p>Choose another tax year under more options.</p>
+                {findTaxYearRules(taxYearRegistry, currentYear) !== undefined && (
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => {
+                      update((i) => ({ ...i, taxYear: currentYear }));
+                    }}
+                  >
+                    Use {taxYearLabel(currentYear)}
+                  </button>
+                )}
+              </Callout>
+            )}
+            <Issues issues={issues} />
+            {ok !== null && calculation.kind === "done" && (
+              <>
+                <Insights result={ok} />
+                <div className="results-grid">
+                  <Breakdown result={ok} />
+                  <NextThousand result={ok} />
+                </div>
+                {editedInputs.studentLoans.length > 0 && (
+                  <LoanChart projection={calculation.projection} detailsLink />
+                )}
+                <Months result={ok} />
+              </>
+            )}
+          </>
+        }
+      />
     </main>
   );
 }

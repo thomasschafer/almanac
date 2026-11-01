@@ -1,6 +1,6 @@
 import { asPence, type Pence } from "../money.ts";
 import { positivePart, rateOfForNi, sum } from "./arithmetic.ts";
-import type { Rate } from "./rules/types.ts";
+import type { Rate } from "../rates.ts";
 
 /**
  * Class 1 NI (category A) on one month's pay, by HMRC's exact percentage method. NI is worked out

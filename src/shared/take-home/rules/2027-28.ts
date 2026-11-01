@@ -1,7 +1,8 @@
 import { fromPounds as pounds } from "../../money.ts";
 import { rules2026To27 as previous } from "./2026-27.ts";
 import { monthlyRepaymentThreshold } from "./student-loans.ts";
-import { carriedForward, confirmed, provisional, unchanged, type TaxYearRules } from "./types.ts";
+import { carriedForward, confirmed, provisional, unchanged } from "../../sourced.ts";
+import type { TaxYearRules } from "./types.ts";
 
 const thresholdFreeze =
   "https://www.gov.uk/government/publications/maintaining-income-tax-and-equivalent-national-insurance-contributions-thresholds-until-5-april-2031";

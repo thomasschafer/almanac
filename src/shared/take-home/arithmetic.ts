@@ -1,5 +1,5 @@
 import { asPence, type Pence } from "../money.ts";
-import type { Rate } from "./rules/types.ts";
+import type { Rate } from "../rates.ts";
 
 /** Basis points in a whole: a {@link Rate} of 10,000 is 100%. */
 export const wholeRate = 10_000;

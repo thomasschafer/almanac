@@ -29,13 +29,9 @@ import type {
   TakeHomeResult,
   TaxCodeUsed,
 } from "./result.ts";
-import {
-  ratePercent,
-  type Rate,
-  type Sourced,
-  type TaxRegime,
-  type TaxYearRules,
-} from "./rules/types.ts";
+import { ratePercent, type Rate } from "../rates.ts";
+import type { Sourced } from "../sourced.ts";
+import type { TaxRegime, TaxYearRules } from "./rules/types.ts";
 import {
   repaymentsDue,
   studentLoanRepayments,

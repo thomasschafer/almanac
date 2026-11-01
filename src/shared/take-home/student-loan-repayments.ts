@@ -2,7 +2,8 @@ import { asPence, type Pence } from "../money.ts";
 import { floorToPound, positivePart, rateOfDown } from "./arithmetic.ts";
 import type { StudentLoanPlan } from "./inputs.ts";
 import type { StudentLoanDeduction } from "./result.ts";
-import type { Rate, StudentLoanYearRules } from "./rules/types.ts";
+import type { Rate } from "../rates.ts";
+import type { StudentLoanYearRules } from "./rules/types.ts";
 
 /**
  * Student loan repayments on one month's pay. They're worked out on the month's NI-able pay

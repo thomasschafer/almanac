@@ -1,11 +1,11 @@
 # Tax rules
 
-How the take-home tool's rules are kept up to date. What the tool does with them is in
-[spec.md](spec.md#take-home-pay).
+How the take-home and house-move tools' rules are kept up to date. What the tools do with them
+is in [spec.md](spec.md).
 
 ## Where they live
 
-Everything is in `src/shared/take-home/rules/`:
+Take-home rules are in `src/shared/take-home/rules/`:
 
 - `2026-27.ts`, `2027-28.ts` and so on: one module per tax year, with income tax, NI, student loan
   repayment and pension figures. Each value is `confirmed` or `provisional`, carries the URL it was
@@ -16,11 +16,21 @@ Everything is in `src/shared/take-home/rules/`:
   Plan 2's different rule before repayments are due), the announced interest rates for each
   academic year, how repayment thresholds are expected to be uprated after the known years, and
   the cap on NI-free salary sacrifice from April 2029.
-- `review.ts`: the events after which the rules need checking, and `takeHomeNotices`, which raises
-  the notices described in the spec.
+- `review.ts`: `takeHomeNotices`, which raises the notices described in the spec. The events,
+  recurring patterns and UK date helpers are shared in `src/shared/rule-review.ts`.
 
-The engine never hard-codes a threshold or rate. If a figure isn't in these modules, the engine
-can't use it.
+House-move rules are in `src/shared/house-move/rules/`:
+
+- `index.ts`: residential SDLT (England and Northern Ireland), residential LBTT (Scotland), their
+  final-liability rounding rules, and standard-rate VAT. Each has its source, status and
+  `lastReviewed`. These are for a replacement main residence sold on the same day, with no
+  additional-property surcharge or first-time buyer relief.
+- `review.ts`: `houseMoveNotices`, using the shared UK Budget and Scottish Budget events to ask
+  for SDLT and LBTT reviews respectively. The notices clear when the affected rule's
+  `lastReviewed` is on or after the event.
+
+Both engines take thresholds and rates from the rule modules. `Sourced` and its helpers live in
+`src/shared/sourced.ts`; whole basis-point rates live in `src/shared/rates.ts`.
 
 ## Sources
 
@@ -30,6 +40,17 @@ HMRC's
 [PAYE tax table routines](https://www.gov.uk/government/publications/payroll-technical-specifications-income-tax)
 and NI guidance for software developers, other GOV.UK pages and announcements, then legislation.
 Only use other sources for event dates, and say so. Record the exact page beside each value.
+
+For house move, use GOV.UK's
+[residential SDLT rates](https://www.gov.uk/stamp-duty-land-tax/residential-property-rates),
+Revenue Scotland's
+[residential LBTT rates](https://revenue.scot/taxes/land-buildings-transaction-tax/residential-property)
+and GOV.UK's [VAT rates](https://www.gov.uk/vat-rates). Sum the marginal band liabilities before
+rounding the final buying tax down to whole pounds, as directed by
+[HMRC SDLTM00050](https://www.gov.uk/hmrc-internal-manuals/stamp-duty-land-tax-manual/sdltm00050)
+and section 9 of Revenue Scotland's
+[conveyance or transfer return](https://revenue.scot/sites/default/files/RS-0001%20Conveyance%20or%20Transfer%20Return_5.pdf).
+The house-move projection assumes these rules stay unchanged over its horizon.
 
 ## Reviewing after an event
 
@@ -41,12 +62,17 @@ When a notice asks for a review (or before 6 April for a new year):
    it's published for the year or set in legislation with no change announced.
 3. Set `lastReviewed` on every year you checked, even if nothing changed. That clears the notices
    for events before that date.
-4. Add any newly announced event dates to `knownReviewEvents` in `review.ts`. Events without a
-   known date are generated from the recurring pattern, with the same id, so a dismissed notice
+4. Add any newly announced event dates to `knownReviewEvents` in `src/shared/rule-review.ts`.
+   Events without a known date are generated from the recurring pattern, with the same id, so a dismissed notice
    stays dismissed when its date becomes known.
 5. Run `npm run check`. The rules tests check every value has a source, that provisional values
    say why, that monthly student loan thresholds match the annual ones, and that the 2026/27 bands
    match HMRC's PAYE specification.
+
+For house move, review SDLT after the UK Budget and LBTT after the Scottish Budget, even if the
+bands do not change. Update the affected rule's `lastReviewed`, sources and status; also check
+VAT when a change is announced. The house-move rules tests cover band edges, whole-pound
+rounding and the shared review events.
 
 ## Adding a tax year
 
