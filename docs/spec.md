@@ -259,7 +259,7 @@ result month, the results say how much short they are, but the date still stands
 
 - The date, and how long until then. Quieter today's-money figures sit beside the main amounts,
   unless they equal the nominal amount.
-- "Where the money goes" reads as one running sum. The sale price less the mortgage, early
+- "Where the money goes" reads as one running sum. The sale price less the mortgage balance left, early
   repayment charge and exit fee gives the equity from the sale. Adding savings left after
   up-front costs gives the money at completion. Subtracting each completion cost, in list order,
   and SDLT or LBTT gives what is left for the deposit. Subtracting the deposit gives what is left

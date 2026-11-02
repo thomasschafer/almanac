@@ -54,7 +54,13 @@ export function displayLedger(row: MonthBreakdown): {
   const real = row.todaysMoney;
   const move = ledger();
   move.leaf("salePrice", "Sale price", "+", row.salePrice, real.salePrice);
-  move.leaf("mortgageBalance", "Mortgage paid off", "−", row.mortgageBalance, real.mortgageBalance);
+  move.leaf(
+    "mortgageBalance",
+    "Mortgage balance left",
+    "−",
+    row.mortgageBalance,
+    real.mortgageBalance,
+  );
   move.leaf(
     "earlyRepaymentCharge",
     "Early repayment charge",
