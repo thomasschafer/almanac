@@ -1,6 +1,6 @@
 import { type ReactNode, useId, useState } from "react";
 import type { z } from "zod";
-import { asPence, type Pence } from "../../shared/money.ts";
+import { asPence, maxPounds, maxPoundsLabel, type Pence } from "../../shared/money.ts";
 import { useReportInvalid } from "./invalid-fields.tsx";
 
 export interface Format<T> {
@@ -15,8 +15,6 @@ export interface Format<T> {
 
 const grouped = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
-const MAX_POUNDS = 100_000_000;
-
 /** Reads a typed number, ignoring currency, grouping and percent signs. */
 function cleanNumber(text: string, { negative }: { negative: boolean }): number | null {
   // Phones can type a minus sign as the Unicode one.
@@ -30,12 +28,12 @@ function cleanNumber(text: string, { negative }: { negative: boolean }): number 
 export const poundsFormat: Format<Pence> = {
   parse: (text) => {
     const pounds = cleanNumber(text, { negative: false });
-    if (pounds === null || pounds > MAX_POUNDS) return null;
+    if (pounds === null || pounds > maxPounds) return null;
     return asPence(Math.round(pounds * 100));
   },
   format: (pence) => grouped.format(pence / 100),
   negative: false,
-  expects: `Enter an amount in pounds, up to £${grouped.format(MAX_POUNDS)}`,
+  expects: `Enter an amount in pounds, up to ${maxPoundsLabel}`,
 };
 
 export interface Bounds {

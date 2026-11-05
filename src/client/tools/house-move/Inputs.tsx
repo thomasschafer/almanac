@@ -8,7 +8,7 @@ import {
   defaultHouseMoveInputs,
 } from "../../../shared/house-move/defaults.ts";
 import { houseMoveInputs, type HouseMoveInputs } from "../../../shared/house-move/inputs.ts";
-import { addMonths, type Month } from "../../../shared/house-move/months.ts";
+import { addMonths, tryAddMonths, type Month } from "../../../shared/house-move/months.ts";
 import { houseMoveInputProblems } from "../../../shared/house-move/problems.ts";
 import { NumberInput, poundsFormat, percentFormat } from "../../ui/NumberInput.tsx";
 import { Segmented } from "../../ui/Segmented.tsx";
@@ -20,6 +20,22 @@ import { EditableRow, MonthField } from "./fields.tsx";
 export type Change = (inputs: HouseMoveInputs) => HouseMoveInputs;
 
 type Path = readonly (string | number)[];
+
+/** Where a new ERC band ends: a year after the last, or null if that's past year 9999. */
+function nextErcUntil(bands: readonly { until: Month }[], today: Month): Month | null {
+  return tryAddMonths(bands.at(-1)?.until ?? today, 12);
+}
+
+/** The month a new overpayment defaults to, or null if that's past year 9999. */
+function nextOverpaymentMonth(asOf: Month, today: Month): Month | null {
+  return tryAddMonths(today > asOf ? today : asOf, 1);
+}
+
+function required(next: Month | null): Month {
+  if (next === null)
+    throw new Error("the button adding this is disabled when there's no next month");
+  return next;
+}
 
 function pathStartsWith(path: Path, prefix: Path) {
   return prefix.every((part, i) => part === path[i]);
@@ -357,6 +373,7 @@ export function Inputs({
             <button
               type="button"
               className="text-button"
+              disabled={nextErcUntil(i.mortgage.ercBands, today) === null}
               onClick={() => {
                 setExpanded(`erc-${i.mortgage.ercBands.length}`);
                 update((current) => ({
@@ -366,7 +383,7 @@ export function Inputs({
                     ercBands: [
                       ...current.mortgage.ercBands,
                       {
-                        until: addMonths(current.mortgage.ercBands.at(-1)?.until ?? today, 12),
+                        until: required(nextErcUntil(current.mortgage.ercBands, today)),
                         rate: percent(1),
                       },
                     ],
@@ -443,6 +460,7 @@ export function Inputs({
             <button
               type="button"
               className="text-button"
+              disabled={nextOverpaymentMonth(i.asOf, today) === null}
               onClick={() => {
                 setExpanded(`overpayment-${i.mortgage.oneOffOverpayments.length}`);
                 update((current) => ({
@@ -452,7 +470,7 @@ export function Inputs({
                     oneOffOverpayments: [
                       ...current.mortgage.oneOffOverpayments,
                       {
-                        month: addMonths(today > current.asOf ? today : current.asOf, 1),
+                        month: required(nextOverpaymentMonth(current.asOf, today)),
                         amount: asPence(0),
                       },
                     ],

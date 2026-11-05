@@ -6,6 +6,7 @@ import { StrictMode, Suspense } from "react";
 import { registerSW } from "virtual:pwa-register";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Route, Routes } from "react-router";
+import { ErrorBoundary } from "./shell/ErrorBoundary.tsx";
 import { IndexPage } from "./shell/IndexPage.tsx";
 import { NoticesProvider } from "./shell/notices.tsx";
 import { PageHeader } from "./shell/PageHeader.tsx";
@@ -27,19 +28,21 @@ if (root === null) throw new Error("no #root element");
 
 createRoot(root).render(
   <StrictMode>
-    <BrowserRouter>
-      <NoticesProvider>
-        <Suspense fallback={<main className="page" aria-busy />}>
-          <Routes>
-            <Route path="/" element={<IndexPage />} />
-            {tools.map((tool) => (
-              <Route key={tool.id} path={`${tool.path}/*`} element={<tool.Page />} />
-            ))}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </NoticesProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <NoticesProvider>
+          <Suspense fallback={<main className="page" aria-busy />}>
+            <Routes>
+              <Route path="/" element={<IndexPage />} />
+              {tools.map((tool) => (
+                <Route key={tool.id} path={`${tool.path}/*`} element={<tool.Page />} />
+              ))}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </NoticesProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );
 

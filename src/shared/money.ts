@@ -6,6 +6,13 @@ export type Pence = z.infer<typeof pence>;
 
 export const nonNegativePence = z.number().int().nonnegative().brand<"Pence">();
 
+/**
+ * The most any amount typed into a tool can be. It keeps every tool's arithmetic far from the
+ * edge of exact integer maths.
+ */
+export const maxPounds = 100_000_000;
+export const maxPoundsLabel = `£${maxPounds.toLocaleString("en-GB")}`;
+
 /** Converts pounds, as typed by the user, to pence. Fails on anything that isn't a finite amount. */
 export function fromPounds(pounds: number): Pence {
   if (!Number.isFinite(pounds)) {
@@ -13,6 +20,12 @@ export function fromPounds(pounds: number): Pence {
   }
   return Math.round(pounds * 100) as Pence;
 }
+
+/** An amount typed into a tool: whole pence from £0 up to {@link maxPounds}. */
+export const typedPence = nonNegativePence.max(
+  fromPounds(maxPounds),
+  `Enter no more than ${maxPoundsLabel}`,
+);
 
 export function toPounds(amount: Pence): number {
   return amount / 100;

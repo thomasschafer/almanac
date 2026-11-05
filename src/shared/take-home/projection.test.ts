@@ -391,6 +391,28 @@ describe("years without rules", () => {
     );
     expect(result).toMatchObject({ status: "invalid", taxYear: "2027-28" });
   });
+
+  it.each([
+    [
+      "pay that grows past the limit",
+      {
+        salary: 30_000,
+        salaryGrowthPercent: 50,
+        loans: [{ plan: "plan5", balance: 0.01, firstRepaymentYear: 2100 }],
+      },
+    ],
+    [
+      "a balance that grows past the limit",
+      {
+        salary: 0,
+        rpiPercent: 30,
+        loans: [{ plan: "plan5", balance: 20_000_000, firstRepaymentYear: null }],
+      },
+    ],
+  ] as const)("reports %s as too large to project", (_, options) => {
+    const result = projectStudentLoans(testInputs(options), taxYearRegistry, start);
+    expect(result).toMatchObject({ status: "invalid", issues: [{ kind: "too-large" }] });
+  });
 });
 
 describe("threshold uprating", () => {

@@ -1,4 +1,4 @@
-import { asPence, fromPounds, type Pence } from "../money.ts";
+import { asPence, fromPounds, maxPounds, maxPoundsLabel, type Pence } from "../money.ts";
 import {
   floorToPound,
   itemAt,
@@ -293,6 +293,14 @@ function calculateYear(
   const override = typedCode === null ? null : parseTaxCode(typedCode, bandsFor);
   if (override?.ok === false && typedCode !== null) {
     issues.push({ kind: "invalid-tax-code", input: typedCode, message: override.message });
+  }
+
+  if (inputs.salary + inputs.bonus.amount > fromPounds(maxPounds)) {
+    issues.push({
+      kind: "too-large",
+      message: `Salary and bonus together can't be more than ${maxPoundsLabel}.`,
+    });
+    return { status: "invalid", issues };
   }
 
   const pay = payYear(inputs, {

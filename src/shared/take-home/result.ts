@@ -222,7 +222,9 @@ export type InputIssue =
       readonly from: "salary" | "bonus";
       readonly message: string;
     }
-  | { readonly kind: "negative-net-pay"; readonly month: number; readonly message: string };
+  | { readonly kind: "negative-net-pay"; readonly month: number; readonly message: string }
+  /** Pay, or a projected balance, beyond what the tools work out. */
+  | { readonly kind: "too-large"; readonly message: string };
 
 export interface TakeHomeCalculation {
   readonly status: "ok";

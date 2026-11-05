@@ -17,6 +17,14 @@ function withoutFirstPaid(inputs: TakeHomeInputs): unknown {
   };
 }
 
+describe("amounts", () => {
+  it("can be at most £100,000,000", () => {
+    const inputs = testInputs({ salary: 100_000_000 });
+    expect(takeHomeInputs.safeParse(inputs).success).toBe(true);
+    expect(takeHomeInputs.safeParse({ ...inputs, salary: inputs.salary + 1 }).success).toBe(false);
+  });
+});
+
 describe("when a Plan 1 or Plan 4 loan was first paid", () => {
   const inputs = testInputs({
     loans: [

@@ -16,10 +16,18 @@ export function monthIndex(value: Month): number {
   return Number(value.slice(0, 4)) * 12 + Number(value.slice(5)) - 1;
 }
 
-export function addMonths(value: Month, count: number): Month {
-  const index = monthIndex(value) + count;
+/** The month `count` months on from `value`, or null if it's outside years 1 to 9999. */
+export function tryAddMonths(value: Month, count: number): Month | null {
   if (!Number.isInteger(count)) throw new Error("Month count must be an integer");
-  return month.parse(
+  const index = monthIndex(value) + count;
+  const result = month.safeParse(
     `${String(Math.floor(index / 12)).padStart(4, "0")}-${String((index % 12) + 1).padStart(2, "0")}`,
   );
+  return result.success ? result.data : null;
+}
+
+export function addMonths(value: Month, count: number): Month {
+  const result = tryAddMonths(value, count);
+  if (result === null) throw new Error(`${value} plus ${String(count)} months isn't a real month`);
+  return result;
 }

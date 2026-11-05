@@ -1,4 +1,4 @@
-import { asPence, type Pence } from "../money.ts";
+import { asPence, fromPounds, maxPounds, maxPoundsLabel, type Pence } from "../money.ts";
 import { itemAt, sum } from "./arithmetic.ts";
 import {
   hasOlderTerms,
@@ -505,10 +505,26 @@ export function projectStudentLoans(
 
     const year = yearFor(startYear);
     const growth = Math.pow(1 + salaryGrowthPercent / 100, startYear - inputStartYear);
+    const salary = Math.round(inputs.salary * growth);
+    const bonus = Math.round(inputs.bonus.amount * growth);
+    // Within a year, balances grow by no more than a year's interest, which keeps them in range.
+    const limit = fromPounds(maxPounds);
+    if (salary + bonus > limit || states.some((state) => (state.balance ?? 0) > limit)) {
+      return {
+        status: "invalid",
+        taxYear: taxYearId(startYear),
+        issues: [
+          {
+            kind: "too-large",
+            message: `The projected pay or a loan balance grows past ${maxPoundsLabel}, too large to project. Try lower salary growth or RPI.`,
+          },
+        ],
+      };
+    }
     const pay = payYear(
       {
-        salary: asPence(Math.round(inputs.salary * growth)),
-        bonus: { ...inputs.bonus, amount: asPence(Math.round(inputs.bonus.amount * growth)) },
+        salary: asPence(salary),
+        bonus: { ...inputs.bonus, amount: asPence(bonus) },
         pension: inputs.pension,
       },
       {

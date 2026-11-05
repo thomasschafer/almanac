@@ -164,6 +164,37 @@ describe("the personal allowance taper", () => {
     expect(result.nextThousand.salary.status).toBe("ok");
   });
 
+  it("works out the most pay it takes, on the highest rates and a large K code", () => {
+    const result = calculate({
+      region: "scotland",
+      salary: 50_000_000,
+      bonus: 50_000_000,
+      bonusMonth: 1,
+      taxCode: "K999999",
+    });
+    expect(result.annual.grossPay).toBe(pounds(100_000_000));
+    expect(result.nextThousand.salary).toMatchObject({
+      status: "invalid",
+      issues: [{ kind: "too-large" }],
+    });
+  });
+
+  it("says pay above the limit is too large", () => {
+    const result = calculateTakeHome(
+      testInputs({ salary: 60_000_000, bonus: 50_000_000 }),
+      rules2026To27,
+    );
+    expect(result).toEqual({
+      status: "invalid",
+      issues: [
+        {
+          kind: "too-large",
+          message: "Salary and bonus together can't be more than £100,000,000.",
+        },
+      ],
+    });
+  });
+
   it("derives 0T once the allowance is gone", () => {
     const above = calculate({ salary: 125_140 });
     expect(above.personalAllowance.afterTaper).toBe(0);

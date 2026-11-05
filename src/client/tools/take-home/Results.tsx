@@ -495,6 +495,13 @@ export function Insights({ result }: { result: TakeHomeCalculation }) {
   );
 }
 
+const issueTitles: Record<InputIssue["kind"], string> = {
+  "invalid-tax-code": "That tax code isn't one we recognise",
+  "pension-exceeds-pay": "The pension is more than the pay it comes from",
+  "negative-net-pay": "Deductions are more than the pay",
+  "too-large": "The pay is too large to work out",
+};
+
 export function Issues({ issues }: { issues: readonly InputIssue[] }) {
   return (
     <>
@@ -502,13 +509,7 @@ export function Issues({ issues }: { issues: readonly InputIssue[] }) {
         <Callout
           key={`${issue.kind}-${"from" in issue ? issue.from : ""}-${"month" in issue ? String(issue.month) : ""}`}
           severity="error"
-          title={
-            issue.kind === "invalid-tax-code"
-              ? "That tax code isn't one we recognise"
-              : issue.kind === "pension-exceeds-pay"
-                ? "The pension is more than the pay it comes from"
-                : "Deductions are more than the pay"
-          }
+          title={issueTitles[issue.kind]}
         >
           {issue.message}
         </Callout>

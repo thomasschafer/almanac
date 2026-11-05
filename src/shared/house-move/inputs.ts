@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { fromPounds, nonNegativePence } from "../money.ts";
+import { typedPence } from "../money.ts";
 import type { Rate, SignedRate } from "../rates.ts";
 
 import { month } from "./months.ts";
 
-const money = nonNegativePence.max(fromPounds(100_000_000), "Enter no more than £100,000,000");
+const money = typedPence;
 
 /** Rate inputs are whole basis points: 459 is 4.59%. Growth can be negative. */
 const rate = z

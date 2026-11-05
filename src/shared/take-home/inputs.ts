@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { nonNegativePence } from "../money.ts";
+import { typedPence } from "../money.ts";
 
 export const studentLoanPlans = ["plan1", "plan2", "plan4", "plan5", "postgraduate"] as const;
 export const studentLoanPlan = z.enum(studentLoanPlans);
@@ -11,7 +11,7 @@ export type PensionMethod = (typeof pensionMethods)[number];
 /** A contribution as a percentage of the pay it comes from, or a fixed amount a year. */
 export const contribution = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("percent"), percent: z.number().min(0).max(100) }),
-  z.strictObject({ kind: z.literal("annual"), amount: nonNegativePence }),
+  z.strictObject({ kind: z.literal("annual"), amount: typedPence }),
 ]);
 export type Contribution = z.infer<typeof contribution>;
 
@@ -36,7 +36,7 @@ export type FirstPaid = (typeof firstPaidOptions)[number];
 
 const loanFields = {
   /** The outstanding balance, for the payoff projection. Null if unknown. */
-  balance: nonNegativePence.nullable(),
+  balance: typedPence.nullable(),
   /**
    * The calendar year of the April the borrower was first due to repay, from which write-off is
    * counted. Null if unknown, in which case the projection can't say when it's written off.
@@ -94,9 +94,9 @@ export const takeHomeInputs = z.strictObject({
   /** A tax year id from the rules registry, such as "2026-27". */
   taxYear: z.string().regex(/^\d{4}-\d{2}$/),
   region: z.enum(["rest-of-uk", "scotland"]),
-  salary: nonNegativePence,
+  salary: typedPence,
   bonus: z.strictObject({
-    amount: nonNegativePence,
+    amount: typedPence,
     /** The month of the tax year it's paid in: 1 is April, 12 is March. */
     month: z.number().int().min(1).max(12),
   }),

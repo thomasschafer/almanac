@@ -699,3 +699,11 @@ test("pins the figures to the top of a phone once the main one scrolls away", as
     await expect(pinned).toBeHidden();
   }
 });
+
+test("says what went wrong instead of a blank page when a page can't load", async ({ page }) => {
+  await page.route(/\/assets\/TakeHomeTool-.*\.js$/, (route) => route.abort());
+  await page.goto("/take-home");
+  await expect(page.getByRole("heading", { name: "Something went wrong" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reload" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to Almanac" })).toHaveAttribute("href", "/");
+});
