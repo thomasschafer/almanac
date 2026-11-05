@@ -131,6 +131,14 @@ export interface PayChange {
   readonly pensionTotal: Pence;
 }
 
+/**
+ * The effect of extra pay, or why it can't be worked out: extra pay can make the inputs invalid,
+ * such as another £1,000 of bonus with a fixed contribution from the bonus that's larger than that.
+ */
+export type NextThousandChange =
+  | { readonly status: "ok"; readonly change: PayChange }
+  | { readonly status: "invalid"; readonly issues: readonly InputIssue[] };
+
 export interface AnnualAllowanceCheck {
   readonly standardAllowance: Pence;
   /** After any taper. */
@@ -245,7 +253,10 @@ export interface TakeHomeCalculation {
   /** Null when there's no gross pay. */
   readonly effectiveRates: EffectiveRates | null;
   /** The effect of another £1,000 of salary, and of another £1,000 of bonus in the bonus month. */
-  readonly nextThousand: { readonly salary: PayChange; readonly bonus: PayChange };
+  readonly nextThousand: {
+    readonly salary: NextThousandChange;
+    readonly bonus: NextThousandChange;
+  };
   readonly annualAllowance: AnnualAllowanceCheck;
   readonly flags: readonly TakeHomeFlag[];
 }

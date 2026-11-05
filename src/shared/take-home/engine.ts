@@ -19,6 +19,7 @@ import type {
   InputIssue,
   MonthResult,
   PayBreakdown,
+  NextThousandChange,
   PayChange,
   PensionBreakdown,
   ProvisionalFigure,
@@ -199,7 +200,8 @@ type NotTakenLoan = Extract<TakeHomeFlag, { kind: "student-loans-not-taken" }>["
 /** A year's figures without the effect of extra pay, which is worked out from them. */
 type YearCalculation = Omit<TakeHomeCalculation, "nextThousand">;
 
-const extraPay = fromPounds(1_000);
+/** The extra pay `nextThousand` is worked out for. */
+export const nextThousandPay = fromPounds(1_000);
 
 /**
  * Works out a year's take-home pay by simulating monthly PAYE payroll under `rules`, which must be
@@ -211,20 +213,19 @@ export function calculateTakeHome(inputs: TakeHomeInputs, rules: TaxYearRules): 
   if (year.status !== "ok") {
     return year;
   }
-  const withExtra = (more: TakeHomeInputs): PayChange => {
+  const withExtra = (more: TakeHomeInputs): NextThousandChange => {
     const after = calculateYear(more, rules);
-    if (after.status !== "ok") {
-      throw new Error(`another ${String(extraPay)}p of pay made the inputs invalid`);
-    }
-    return payChange(year.annual, after.annual);
+    return after.status === "ok"
+      ? { status: "ok", change: payChange(year.annual, after.annual) }
+      : after;
   };
   return {
     ...year,
     nextThousand: {
-      salary: withExtra({ ...inputs, salary: asPence(inputs.salary + extraPay) }),
+      salary: withExtra({ ...inputs, salary: asPence(inputs.salary + nextThousandPay) }),
       bonus: withExtra({
         ...inputs,
-        bonus: { ...inputs.bonus, amount: asPence(inputs.bonus.amount + extraPay) },
+        bonus: { ...inputs.bonus, amount: asPence(inputs.bonus.amount + nextThousandPay) },
       }),
     },
   };

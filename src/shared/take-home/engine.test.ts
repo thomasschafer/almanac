@@ -4,7 +4,7 @@ import { calculateTakeHome } from "./engine.ts";
 import type { MonthResult, TakeHomeCalculation, TakeHomeFlag } from "./result.ts";
 import { rules2026To27 } from "./rules/2026-27.ts";
 import { rules2027To28 } from "./rules/2027-28.ts";
-import { testInputs, type TestInputs } from "./test-inputs.ts";
+import { nextThousand, testInputs, type TestInputs } from "./test-inputs.ts";
 
 function calculate(overrides: TestInputs = {}): TakeHomeCalculation {
   const inputs = testInputs(overrides);
@@ -128,7 +128,7 @@ describe("the personal allowance taper", () => {
 
   it("takes 60% tax and 2% NI on the next £1,000 of salary", () => {
     // NI on each month's extra £83.33 rounds to 4p more over the year.
-    expect(result.nextThousand.salary).toEqual({
+    expect(nextThousand(result, "salary")).toEqual({
       extraPay: pounds(1_000),
       takeHome: pounds(379.96),
       incomeTax: pounds(600),
@@ -143,8 +143,25 @@ describe("the personal allowance taper", () => {
     // From £99,500, half the extra is taxed at 40% and half at 60%: a rate at the current
     // position alone would say 40%.
     const below = calculate({ salary: 99_500 });
-    expect(below.nextThousand.salary.incomeTax).toBe(pounds(500));
-    expect(below.nextThousand.bonus.incomeTax).toBe(pounds(500));
+    expect(nextThousand(below, "salary").incomeTax).toBe(pounds(500));
+    expect(nextThousand(below, "bonus").incomeTax).toBe(pounds(500));
+  });
+
+  it("says the next £1,000 of bonus can't be worked out when it would make the inputs invalid", () => {
+    // With no bonus, a fixed contribution from the bonus is skipped; another £1,000 of bonus
+    // would be less than it.
+    const result = calculate({ salary: 50_000, fromBonus: { annual: 5_000 } });
+    expect(result.nextThousand.bonus).toEqual({
+      status: "invalid",
+      issues: [
+        {
+          kind: "pension-exceeds-pay",
+          from: "bonus",
+          message: "The pension contribution from the bonus is more than the bonus.",
+        },
+      ],
+    });
+    expect(result.nextThousand.salary.status).toBe("ok");
   });
 
   it("derives 0T once the allowance is gone", () => {
@@ -164,7 +181,7 @@ describe("the personal allowance taper", () => {
     const overridden = calculate({ salary: 110_000, taxCode: "1257L" });
     expect(overridden.taxCode).toMatchObject({ source: "override", display: "1257L" });
     expect(overridden.annual.incomeTax).toBeLessThan(result.annual.incomeTax);
-    expect(overridden.nextThousand.salary.incomeTax).toBe(pounds(400));
+    expect(nextThousand(overridden, "salary").incomeTax).toBe(pounds(400));
   });
 });
 
@@ -179,13 +196,13 @@ describe("Scotland", () => {
   });
 
   it("takes the Scottish higher rate on the next £1,000", () => {
-    expect(result.nextThousand.salary.incomeTax).toBe(pounds(420));
+    expect(nextThousand(result, "salary").incomeTax).toBe(pounds(420));
   });
 
   it("takes 67.5% in the taper for an advanced rate taxpayer", () => {
-    expect(calculate({ region: "scotland", salary: 110_000 }).nextThousand.salary.incomeTax).toBe(
-      pounds(675),
-    );
+    expect(
+      nextThousand(calculate({ region: "scotland", salary: 110_000 }), "salary").incomeTax,
+    ).toBe(pounds(675));
   });
 
   it("flags a code for the wrong regime", () => {
@@ -432,7 +449,7 @@ describe("more than one student loan plan", () => {
       { plan: "plan2", amount: pounds(4) },
     ]);
     // 6% and 9% of the extra, each month rounded down to the pound.
-    expect(result.nextThousand.salary.studentLoans).toEqual([
+    expect(nextThousand(result, "salary").studentLoans).toEqual([
       { plan: "postgraduate", amount: pounds(49) },
       { plan: "plan2", amount: pounds(96) },
     ]);
@@ -642,7 +659,7 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
   it("takes 45% tax, 2% NI and 9% student loan on the next £1,000", () => {
     // Spread across the months, student loans round down to the pound each month and take £96;
     // the employer's 8% of salary goes into the pension too.
-    expect(result.nextThousand.salary).toEqual({
+    expect(nextThousand(result, "salary")).toEqual({
       extraPay: pounds(1_000),
       takeHome: pounds(434.08),
       incomeTax: pounds(450),
@@ -651,7 +668,7 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
       pensionFromPay: 0,
       pensionTotal: pounds(79.93),
     });
-    expect(result.nextThousand.bonus).toEqual({
+    expect(nextThousand(result, "bonus")).toEqual({
       extraPay: pounds(1_000),
       takeHome: pounds(440),
       incomeTax: pounds(450),
@@ -672,7 +689,7 @@ describe("a high earner with a large bonus and a fixed sacrifice", () => {
     });
     // Half of the next £1,000 of bonus is sacrificed; the other half is taxed at 40% and
     // withdraws £250 of allowance, which is taxed at 40% too.
-    expect(sacrificingBonus.nextThousand.bonus).toEqual({
+    expect(nextThousand(sacrificingBonus, "bonus")).toEqual({
       extraPay: pounds(1_000),
       takeHome: pounds(145),
       incomeTax: pounds(300),
@@ -708,7 +725,7 @@ describe("a student loan that isn't due yet", () => {
     const result = calculate({ salary: 45_000, loans: [notDue] });
     expect(result.annual.studentLoanTotal).toBe(0);
     expect(result.annual.studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
-    expect(result.nextThousand.salary.studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
+    expect(nextThousand(result, "salary").studentLoans).toEqual([{ plan: "plan2", amount: 0 }]);
     expect(flag(result, "student-loans-not-taken")).toEqual({
       kind: "student-loans-not-taken",
       loans: [{ plan: "plan2", reason: { kind: "not-due", firstRepaymentYear: 2027 } }],

@@ -501,6 +501,24 @@ test("the next £1,000 is worked out across a threshold", async ({ page }) => {
   await expect(panel).not.toContainText("%");
 });
 
+test("the page still shows when another £1,000 of bonus would make the inputs invalid", async ({
+  page,
+}) => {
+  // With no bonus, a fixed contribution from the bonus is skipped; another £1,000 of bonus
+  // would be less than it.
+  await saveInputs(page, {
+    ...exampleInputs,
+    salary: asPence(5_000_000),
+    bonus: { ...exampleInputs.bonus, amount: asPence(0) },
+    pension: { ...exampleInputs.pension, fromBonus: { kind: "annual", amount: asPence(500_000) } },
+    studentLoans: [],
+  });
+  await page.goto("/take-home");
+  const panel = page.locator("section").filter({ has: page.locator("#next-heading") });
+  await expect(panel).toContainText("You'd keep");
+  await expect(panel).toContainText("of salary a year.");
+});
+
 test("an older Plan 1 or Plan 4 loan's write-off is conditional until it's known", async ({
   page,
 }) => {

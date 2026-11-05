@@ -106,7 +106,9 @@ add up to the gross pay.
 
 They show what another £1,000 a year of salary, or of bonus, would change: take-home, tax, NI,
 each student loan and the pension. The year is worked out again with the extra pay, so the
-figures are right where it crosses a threshold. The results also flag:
+figures are right where it crosses a threshold. If the extra pay would make the inputs invalid,
+such as another £1,000 of bonus with a larger fixed contribution from the bonus, it says why
+instead. The results also flag:
 
 - where the personal allowance is being withdrawn (between £100,000 and £125,140 of adjusted net
   income in 2026/27), the effective rate that leaves (60%, or 67.5% on Scottish rates), and how

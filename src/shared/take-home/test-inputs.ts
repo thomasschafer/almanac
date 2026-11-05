@@ -1,4 +1,5 @@
 import { fromPounds } from "../money.ts";
+import type { PayChange, TakeHomeCalculation } from "./result.ts";
 import {
   plansWithOlderLoans,
   takeHomeInputs,
@@ -79,4 +80,13 @@ export function testInputs(overrides: TestInputs = {}): TakeHomeInputs {
       rpiPercent: overrides.rpiPercent ?? 3,
     },
   });
+}
+
+/** The effect of another £1,000 of `stream`, failing the test if it couldn't be worked out. */
+export function nextThousand(result: TakeHomeCalculation, stream: "salary" | "bonus"): PayChange {
+  const next = result.nextThousand[stream];
+  if (next.status !== "ok") {
+    throw new Error(`another £1,000 of ${stream} made the inputs invalid`);
+  }
+  return next.change;
 }

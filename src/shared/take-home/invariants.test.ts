@@ -3,7 +3,7 @@ import { fromPounds as pounds, type Pence } from "../money.ts";
 import { calculateTakeHome } from "./engine.ts";
 import type { PayBreakdown, TakeHomeCalculation } from "./result.ts";
 import { rules2026To27 } from "./rules/2026-27.ts";
-import { testInputs, type TestInputs } from "./test-inputs.ts";
+import { nextThousand, testInputs, type TestInputs } from "./test-inputs.ts";
 
 function calculate(overrides: TestInputs): TakeHomeCalculation {
   const result = calculateTakeHome(testInputs(overrides), rules2026To27);
@@ -154,7 +154,7 @@ describe("the next £1,000", () => {
       bonus: calculate({ ...options, bonus: bonus + 1_000 }),
     };
     for (const stream of ["salary", "bonus"] as const) {
-      const change = base.nextThousand[stream];
+      const change = nextThousand(base, stream);
       const after = again[stream].annual;
       expect(change.extraPay).toBe(pounds(1_000));
       expect(change.takeHome).toBe(after.netPay - base.annual.netPay);

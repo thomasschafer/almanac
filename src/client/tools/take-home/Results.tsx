@@ -9,6 +9,7 @@ import type {
   TakeHomeCalculation,
   TakeHomeFlag,
 } from "../../../shared/take-home/result.ts";
+import { nextThousandPay } from "../../../shared/take-home/engine.ts";
 import { studentLoanPlanRules } from "../../../shared/take-home/rules/student-loans.ts";
 import { Segmented } from "../../ui/Segmented.tsx";
 import {
@@ -399,22 +400,13 @@ export function NextThousand({ result }: { result: TakeHomeCalculation }) {
   const hasBonus = result.bonusMonth !== null;
   const [of, setOf] = useState<"salary" | "bonus">("salary");
   const stream = hasBonus ? of : "salary";
-  const change: PayChange = result.nextThousand[stream];
-  const rows = [
-    { label: "Income tax", amount: change.incomeTax },
-    { label: "National Insurance", amount: change.nationalInsurance },
-    ...change.studentLoans.map((loan) => ({
-      label: studentLoanPlanRules[loan.plan].name,
-      amount: loan.amount,
-    })),
-    { label: "Your pension", amount: change.pensionFromPay },
-  ].filter((row) => row.amount !== 0);
+  const next = result.nextThousand[stream];
 
   return (
     <section className="panel" aria-labelledby="next-heading">
       <div className="panel-head">
         <h2 id="next-heading" className="kicker">
-          The next <span className="num">{gbp(change.extraPay)}</span>
+          The next <span className="num">{gbp(nextThousandPay)}</span>
         </h2>
         {hasBonus && (
           <Segmented
@@ -429,6 +421,31 @@ export function NextThousand({ result }: { result: TakeHomeCalculation }) {
           />
         )}
       </div>
+      {next.status === "ok" ? (
+        <PayChangeBreakdown change={next.change} stream={stream} />
+      ) : (
+        <p className="panel-note">
+          Can't be worked out, as another <span className="num">{gbp(nextThousandPay)}</span> of{" "}
+          {stream} makes the figures invalid: {next.issues.map((issue) => issue.message).join(" ")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function PayChangeBreakdown({ change, stream }: { change: PayChange; stream: "salary" | "bonus" }) {
+  const rows = [
+    { label: "Income tax", amount: change.incomeTax },
+    { label: "National Insurance", amount: change.nationalInsurance },
+    ...change.studentLoans.map((loan) => ({
+      label: studentLoanPlanRules[loan.plan].name,
+      amount: loan.amount,
+    })),
+    { label: "Your pension", amount: change.pensionFromPay },
+  ].filter((row) => row.amount !== 0);
+
+  return (
+    <>
       <p className="lede">
         You'd keep <span className="num strong">{gbp(change.takeHome)}</span> of another{" "}
         <span className="num">{gbp(change.extraPay)}</span> of {stream} a year.
@@ -449,7 +466,7 @@ export function NextThousand({ result }: { result: TakeHomeCalculation }) {
           pension.
         </p>
       )}
-    </section>
+    </>
   );
 }
 
